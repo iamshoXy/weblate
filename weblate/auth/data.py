@@ -160,9 +160,6 @@ TRANSLATE_PERMS = {
     "suggestion.vote",
     "unit.check",
     "unit.edit",
-    "translation.download",
-    "upload.overwrite",
-    "upload.perform",
     "machinery.view",
 }
 
