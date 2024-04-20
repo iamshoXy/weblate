@@ -226,7 +226,7 @@ def mail_admins_contact(request, subject, message, context, sender, to) -> None:
 def redirect_profile(page=""):
     url = reverse("profile")
     if page and ANCHOR_RE.match(page):
-        url = url + page
+        url = f"{url}{page}"
     return HttpResponseRedirect(url)
 
 
@@ -583,12 +583,12 @@ class UserPage(UpdateView):
         if "add_group" in request.POST:
             self.group_form = GroupAddForm(request.POST)
             if self.group_form.is_valid():
-                user.groups.add(self.group_form.cleaned_data["add_group"])
+                user.add_team(request, self.group_form.cleaned_data["add_group"])
                 return HttpResponseRedirect(self.get_success_url() + "#groups")
         if "remove_group" in request.POST:
             form = GroupRemoveForm(request.POST)
             if form.is_valid():
-                user.groups.remove(form.cleaned_data["remove_group"])
+                user.remove_team(request, form.cleaned_data["remove_group"])
                 return HttpResponseRedirect(self.get_success_url() + "#groups")
         if "remove_user" in request.POST:
             remove_user(user, request, skip_notify=True)
@@ -801,7 +801,7 @@ def register(request):
     # Get list of allowed backends
     backends = get_auth_keys()
     if settings.REGISTRATION_ALLOW_BACKENDS and not invitation:
-        backends = backends & set(settings.REGISTRATION_ALLOW_BACKENDS)
+        backends &= set(settings.REGISTRATION_ALLOW_BACKENDS)
     elif not registration_open:
         backends = set()
 
@@ -1082,11 +1082,20 @@ def mute_real(user, **kwargs) -> None:
     for notification_cls in NOTIFICATIONS:
         if notification_cls.ignore_watched:
             continue
-        subscription = user.subscription_set.get_or_create(
-            notification=notification_cls.get_name(),
-            defaults={"frequency": FREQ_NONE},
-            **kwargs,
-        )[0]
+        try:
+            subscription = user.subscription_set.get_or_create(
+                notification=notification_cls.get_name(),
+                defaults={"frequency": FREQ_NONE},
+                **kwargs,
+            )[0]
+        except Subscription.MultipleObjectsReturned:
+            subscriptions = user.subscription_set.filter(
+                notification=notification_cls.get_name(), **kwargs
+            )
+            # Remove extra subscriptions
+            for subscription in subscriptions[1:]:
+                subscription.delete()
+            subscription = subscriptions[0]
         if subscription.frequency != FREQ_NONE:
             subscription.frequency = FREQ_NONE
             subscription.save(update_fields=["frequency"])

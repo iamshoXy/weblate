@@ -9,10 +9,11 @@ from __future__ import annotations
 import os
 import tempfile
 from copy import copy
-from typing import TYPE_CHECKING, TypeAlias
+from typing import TYPE_CHECKING, BinaryIO, TypeAlias
 
 from django.utils.functional import cached_property
 from django.utils.translation import gettext
+from translate.storage.base import TranslationStore as TranslateToolkitStore
 from translate.storage.base import TranslationUnit as TranslateToolkitUnit
 from weblate_language_data.countries import DEFAULT_LANGS
 
@@ -22,7 +23,7 @@ from weblate.utils.hash import calculate_hash
 from weblate.utils.state import STATE_EMPTY, STATE_TRANSLATED
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Sequence
 
     from django_stubs_ext import StrOrPromise
 
@@ -121,6 +122,13 @@ class BaseItem:
 InnerUnit: TypeAlias = TranslateToolkitUnit | BaseItem
 
 
+class BaseStore:
+    units: Sequence[InnerUnit]
+
+
+InnerStore: TypeAlias = TranslateToolkitStore | BaseStore
+
+
 class TranslationUnit:
     """
     Wrapper for translate-toolkit unit.
@@ -204,7 +212,7 @@ class TranslationUnit:
         return ""
 
     @classmethod
-    def calculate_id_hash(cls, has_template: bool, source: str, context: str):
+    def calculate_id_hash(cls, has_template: bool, source: str, context: str) -> int:
         """
         Return hash of source string, used for quick lookup.
 
@@ -215,22 +223,26 @@ class TranslationUnit:
         return calculate_hash(context)
 
     @cached_property
-    def id_hash(self):
+    def id_hash(self) -> int:
         return self.calculate_id_hash(
             self.template is not None,
             self.source,
             self.context,
         )
 
-    def is_translated(self):
-        """Check whether unit is translated."""
-        return bool(self.target)
+    def has_translation(self) -> bool:
+        """Check whether unit has translation."""
+        return any(split_plural(self.target))
 
-    def is_approved(self, fallback=False):
+    def is_translated(self) -> bool:
+        """Check whether unit is translated."""
+        return self.has_translation()
+
+    def is_approved(self, fallback=False) -> bool:
         """Check whether unit is approved."""
         return fallback
 
-    def is_fuzzy(self, fallback=False):
+    def is_fuzzy(self, fallback=False) -> bool:
         """Check whether unit needs edit."""
         return fallback
 
@@ -292,6 +304,7 @@ class TranslationFormat:
     can_edit_base: bool = True
     strict_format_plurals: bool = False
     plural_preference: tuple[int, ...] | None = None
+    store: InnerStore
 
     @classmethod
     def get_identifier(cls):
@@ -349,7 +362,9 @@ class TranslationFormat:
             return [self.storefile]
         return [self.storefile.name]
 
-    def load(self, storefile, template_store):
+    def load(
+        self, storefile: str | BinaryIO, template_store: InnerStore | None
+    ) -> InnerStore:
         raise NotImplementedError
 
     @classmethod
@@ -468,7 +483,7 @@ class TranslationFormat:
         raise NotImplementedError
 
     @property
-    def all_store_units(self) -> list[BaseItem]:
+    def all_store_units(self) -> list[InnerUnit]:
         """Wrapper for all store units for possible filtering."""
         return self.store.units
 

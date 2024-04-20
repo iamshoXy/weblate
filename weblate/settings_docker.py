@@ -980,6 +980,7 @@ CHECK_LIST = [
     "weblate.checks.chars.EndColonCheck",
     "weblate.checks.chars.EndQuestionCheck",
     "weblate.checks.chars.EndExclamationCheck",
+    "weblate.checks.chars.EndInterrobangCheck",
     "weblate.checks.chars.EndEllipsisCheck",
     "weblate.checks.chars.EndSemicolonCheck",
     "weblate.checks.chars.MaxLengthCheck",
@@ -1116,7 +1117,7 @@ CACHES = {
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
             # If you set password here, adjust CELERY_BROKER_URL as well
-            "PASSWORD": REDIS_PASSWORD if REDIS_PASSWORD else None,
+            "PASSWORD": REDIS_PASSWORD or None,
             "CONNECTION_POOL_KWARGS": {},
         },
         "KEY_PREFIX": "weblate",
@@ -1267,7 +1268,7 @@ CELERY_TASK_ROUTES = {
 
 # CORS allowed origins
 CORS_ALLOWED_ORIGINS = get_env_list("WEBLATE_CORS_ALLOWED_ORIGINS")
-CORS_URLS_REGEX = r"^/api/.*$"
+CORS_URLS_REGEX = rf"^{URL_PREFIX}/api/.*$"
 
 # Database backup type
 DATABASE_BACKUP = get_env_str("WEBLATE_DATABASE_BACKUP", "plain")

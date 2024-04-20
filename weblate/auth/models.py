@@ -775,6 +775,36 @@ class User(AbstractBaseUser):
             self.get_visible_name(), address or self.profile.get_commit_email()
         )
 
+    def add_team(self, request: AuthenticatedHttpRequest | None, team: Group) -> None:
+        from weblate.accounts.models import AuditLog
+
+        self.groups.add(team)
+        AuditLog.objects.create(
+            user=self,
+            request=request if request is not None and request.user == self else None,
+            activity="team-add",
+            username=request.user.username
+            if request is not None and request.user
+            else None,
+            team=team.name,
+        )
+
+    def remove_team(
+        self, request: AuthenticatedHttpRequest | None, team: Group
+    ) -> None:
+        from weblate.accounts.models import AuditLog
+
+        self.groups.remove(team)
+        AuditLog.objects.create(
+            user=self,
+            request=request if request is not None and request.user == self else None,
+            activity="team-remove",
+            username=request.user.username
+            if request is not None and request.user
+            else None,
+            team=team.name,
+        )
+
 
 class AutoGroup(models.Model):
     match = RegexField(
@@ -856,7 +886,7 @@ def auto_assign_group(user) -> None:
     # Add user to automatic groups
     for auto in AutoGroup.objects.prefetch_related("group"):
         if re.match(auto.match, user.email or ""):
-            user.groups.add(auto.group)
+            user.add_team(None, auto.group)
 
 
 @receiver(m2m_changed, sender=ComponentList.components.through)
@@ -877,14 +907,14 @@ def change_componentlist(sender, instance, action, **kwargs) -> None:
 def remove_group_admin(sender, instance, action, pk_set, reverse, **kwargs) -> None:
     if action != "post_remove":
         return
-    pk = pk_set.pop()
-    if reverse:
-        group = instance
-        user = User.objects.get(pk=pk)
-    else:
-        group = Group.objects.get(pk=pk)
-        user = instance
-    group.admins.remove(user)
+    for pk in pk_set:
+        if reverse:
+            group = instance
+            user = User.objects.get(pk=pk)
+        else:
+            group = Group.objects.get(pk=pk)
+            user = instance
+        group.admins.remove(user)
 
 
 @receiver(post_save, sender=User)
@@ -1044,8 +1074,6 @@ class Invitation(models.Model):
         if self.user and self.user != user:
             raise ValueError("User mismatch on accept!")
 
-        user.groups.add(self.group)
-
         if self.is_superuser:
             user.is_superuser = True
             user.save(update_fields=["is_superuser"])
@@ -1056,6 +1084,9 @@ class Invitation(models.Model):
             activity="accepted",
             username=self.author.username,
         )
+
+        user.add_team(request, self.group)
+
         self.delete()
 
 

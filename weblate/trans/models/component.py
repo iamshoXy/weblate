@@ -97,6 +97,7 @@ from weblate.utils.site import get_site_url
 from weblate.utils.state import STATE_FUZZY, STATE_READONLY, STATE_TRANSLATED
 from weblate.utils.stats import ComponentStats
 from weblate.utils.validators import (
+    WeblateURLValidator,
     validate_filename,
     validate_re_nonempty,
     validate_slug,
@@ -181,7 +182,7 @@ AZURE_REPOS_REGEXP = [
 
 
 def perform_on_link(func):
-    """Perfom operation on repository link."""
+    """Perform operation on repository link."""
 
     def on_link_wrapper(self, *args, **kwargs):
         linked = self.linked_component
@@ -265,11 +266,11 @@ class ComponentQuerySet(models.QuerySet):
             "pull_message",
         )
 
-    def get_linked(self, val):
-        """Return component for linked repo."""
-        if not is_repo_link(val):
-            return None
-        project, *categories, component = val[10:].split("/")
+    def filter_by_path(self, path: str) -> ComponentQuerySet:
+        try:
+            project, *categories, component = path.split("/")
+        except ValueError:
+            raise Component.DoesNotExist
         kwargs = {}
         prefix = ""
         for category in reversed(categories):
@@ -277,7 +278,18 @@ class ComponentQuerySet(models.QuerySet):
             prefix = f"category__{prefix}"
         if not kwargs:
             kwargs["category"] = None
-        return self.get(slug__iexact=component, project__slug__iexact=project, **kwargs)
+        return self.filter(
+            slug__iexact=component, project__slug__iexact=project, **kwargs
+        )
+
+    def get_by_path(self, path: str) -> Component:
+        return self.filter_by_path(path).get()
+
+    def get_linked(self, val):
+        """Return component for linked repo."""
+        if not is_repo_link(val):
+            return None
+        return self.get_by_path(val[10:])
 
     def order_project(self):
         """Ordering in global scope by project name."""
@@ -380,7 +392,7 @@ class Component(models.Model, PathMixin, CacheKeyMixin, ComponentCategoryMixin):
             "{{filename}} and {{line}} as filename and line placeholders. "
             "You might want to strip leading directory by using {{filename|parentdir}}."
         ),
-        validators=[validate_repoweb],
+        validators=[WeblateURLValidator(), validate_repoweb],
         blank=True,
     )
     git_export = models.CharField(
@@ -964,7 +976,7 @@ class Component(models.Model, PathMixin, CacheKeyMixin, ComponentCategoryMixin):
                 continue
 
             if addon.has_settings():
-                form = addon.get_add_form(None, component, data=configuration)
+                form = addon.get_add_form(None, component=component, data=configuration)
                 if not form.is_valid():
                     component.log_warning(
                         "could not enable addon %s, invalid settings", name
@@ -977,7 +989,7 @@ class Component(models.Model, PathMixin, CacheKeyMixin, ComponentCategoryMixin):
 
             component.log_info("enabling addon %s", name)
             # Running is disabled now, it is triggered in after_save
-            addon.create(component, run=False, configuration=configuration)
+            addon.create(component=component, run=False, configuration=configuration)
 
     def create_glossary(self) -> None:
         project = self.project
@@ -1897,10 +1909,10 @@ class Component(models.Model, PathMixin, CacheKeyMixin, ComponentCategoryMixin):
     @cached_property
     def linked_childs(self):
         """Return list of components which links repository to us."""
-        childs = self.component_set.prefetch()
-        for child in childs:
+        children = self.component_set.prefetch()
+        for child in children:
             child.linked_component = self
-        return childs
+        return children
 
     def get_linked_childs_for_template(self):
         return [
@@ -3012,6 +3024,10 @@ class Component(models.Model, PathMixin, CacheKeyMixin, ComponentCategoryMixin):
             fullname, self.source_language, self.get_new_base_filename()
         )
 
+        # Skip commit in case Component is not yet saved (called during validation)
+        if not self.pk:
+            return
+
         with self.repository.lock:
             self.commit_files(
                 template=self.add_message,
@@ -3559,7 +3575,7 @@ class Component(models.Model, PathMixin, CacheKeyMixin, ComponentCategoryMixin):
 
         result = defaultdict(list)
         result["__lookup__"] = {}
-        for addon in Addon.objects.filter_component(self):
+        for addon in Addon.objects.filter_for_execution(self):
             for installed in addon.event_set.all():
                 result[installed.event].append(addon)
             result["__all__"].append(addon)

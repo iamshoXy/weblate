@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Weblate 5.4\n"
 "Report-Msgid-Bugs-To: https://github.com/WeblateOrg/weblate/issues\n"
 "POT-Creation-Date: 2024-02-14 15:18+0100\n"
-"PO-Revision-Date: 2024-03-29 18:02+0000\n"
+"PO-Revision-Date: 2024-04-13 17:01+0000\n"
 "Last-Translator: \"Miguel A. Bouzada\" <mbouzada@gmail.com>\n"
 "Language-Team: Galician <https://hosted.weblate.org/projects/weblate/"
 "documentation/gl/>\n"
@@ -53,7 +53,7 @@ msgstr ""
 
 #: ../../admin/access.rst:24 ../../admin/access.rst:32
 msgid "Visible to everybody."
-msgstr ""
+msgstr "Visible para todos."
 
 #: ../../admin/access.rst:26
 msgid "Any authenticated user can contribute."
@@ -61,7 +61,7 @@ msgstr "Calquera usuario autenticado pode colaborar."
 
 #: ../../admin/access.rst:28
 msgid "VCS repository might be exposed to everybody."
-msgstr ""
+msgstr "O repositorio do SCV (VCS) pode estar exposto a todo o mundo."
 
 #: ../../admin/access.rst:30
 msgid ""
@@ -81,7 +81,8 @@ msgstr "Só certos usuarios escollidos poden colaborar."
 #: ../../admin/access.rst:36 ../../admin/access.rst:44
 #: ../../admin/access.rst:52
 msgid "Only chosen users can access VCS repository."
-msgstr "Só certos usuarios escollidos poden acceder ao repositorio do SCV."
+msgstr ""
+"Só certos usuarios escollidos poden acceder ao repositorio do SCV (VCS)."
 
 #: ../../admin/access.rst:38
 msgid ""
@@ -829,7 +830,7 @@ msgstr "Editar"
 #: ../../admin/access.rst:469 ../../admin/optionals.rst:266
 #: ../../user/checks.rst:0
 msgid "Scope"
-msgstr "Eido"
+msgstr "Ámbito"
 
 #: ../../admin/access.rst:469
 msgid "Permission"
@@ -857,7 +858,7 @@ msgstr "Administración"
 
 #: ../../admin/access.rst:473 ../../api.rst:2136
 msgid "Changes"
-msgstr "Mudanzas"
+msgstr "Cambios"
 
 #: ../../admin/access.rst:473
 msgid "Download changes"
@@ -1250,7 +1251,7 @@ msgstr "Xestionar a memoria de tradución"
 
 #: ../../admin/access.rst:581
 msgid "Manage machinery"
-msgstr "Xestionar a tradución automática"
+msgstr "Xestionar a tradución con máquinas"
 
 #: ../../admin/access.rst:583
 msgid "Manage component lists"
@@ -1628,7 +1629,7 @@ msgstr ""
 
 #: ../../admin/addons.rst:4 ../../api.rst:2285
 msgid "Add-ons"
-msgstr ""
+msgstr "engadidos"
 
 #: ../../admin/addons.rst:6
 msgid ""
@@ -1777,7 +1778,7 @@ msgid ""
 "in the current project."
 msgstr ""
 "Introduza o URL semántico («slug») dun compoñente para usar como orixe, "
-"deixeo en branco para usar todos os compoñentes do proxecto actual."
+"déixeo en branco para usar todos os compoñentes do proxecto actual."
 
 #: ../../admin/addons.rst:58
 msgid "``engines``"
@@ -1785,7 +1786,7 @@ msgstr "``engines``"
 
 #: ../../admin/addons.rst:58 ../../api.rst:1923
 msgid "Machine translation engines"
-msgstr "Motores da tradución de xeito automático"
+msgstr "Motores de tradución con máquinas"
 
 #: ../../admin/addons.rst:60 ../../admin/addons.rst:85
 msgid "``threshold``"
@@ -1793,7 +1794,7 @@ msgstr "``threshold``"
 
 #: ../../admin/addons.rst:60 ../../api.rst:1924
 msgid "Score threshold"
-msgstr ""
+msgstr "Limiar de puntuación"
 
 #: ../../admin/addons.rst:0
 msgid "Triggers"
@@ -1811,7 +1812,7 @@ msgid ""
 "Automatically translates strings using machine translation or other "
 "components."
 msgstr ""
-"Traduce automaticamente as cadeas mediante tradución automática ou outros "
+"Traduce automaticamente as cadeas mediante tradución con máquinas ou outros "
 "compoñentes."
 
 #: ../../admin/addons.rst:66
@@ -1838,7 +1839,7 @@ msgstr ""
 
 #: ../../admin/addons.rst:79
 msgid "JavaScript localization CDN"
-msgstr "CDN de tradución de JavaScript"
+msgstr "CDN de rexionalización de JavaScript"
 
 #: ../../admin/addons.rst:83
 msgid "``weblate.cdn.cdnjs``"
@@ -1862,7 +1863,7 @@ msgstr "Selector de CSS"
 
 #: ../../admin/addons.rst:87
 msgid "CSS selector to detect localizable elements."
-msgstr ""
+msgstr "Selector CSS para detectar elementos rexionalizábeis."
 
 #: ../../admin/addons.rst:89
 msgid "``cookie_name``"
@@ -1874,7 +1875,7 @@ msgstr "Nome da cookie de idioma"
 
 #: ../../admin/addons.rst:89
 msgid "Name of cookie which stores language preference."
-msgstr ""
+msgstr "Nome da cookie que almacena a preferencia de idioma."
 
 #: ../../admin/addons.rst:91
 msgid "``files``"
@@ -1889,6 +1890,8 @@ msgid ""
 "List of filenames in current repository or remote URLs to parse for "
 "translatable strings."
 msgstr ""
+"Lista de nomes de ficheiros no repositorio actual ou URL remotos para "
+"analizar as cadeas traducíbeis."
 
 #: ../../admin/addons.rst:93
 msgid "daily, repository post-commit, repository post-update"
@@ -1900,7 +1903,7 @@ msgid ""
 "or HTML localization."
 msgstr ""
 "Publica as traducións na rede de distribución de contido para usalas na "
-"tradución de JavaScript ou HTML."
+"rexionalización de JavaScript ou HTML."
 
 #: ../../admin/addons.rst:98
 msgid ""
@@ -2098,7 +2101,7 @@ msgstr "``base_file_template``"
 
 #: ../../admin/addons.rst:195
 msgid "Define the monolingual base filename"
-msgstr ""
+msgstr "Definir o nome do ficheiro base monolingue"
 
 #: ../../admin/addons.rst:195
 msgid "Leave empty for bilingual translation files."
@@ -2117,6 +2120,8 @@ msgid ""
 "Filename of file used for creating new translations. For gettext choose .pot "
 "file."
 msgstr ""
+"Nome do ficheiro utilizado para crear novas traducións. Para gettext escolla "
+"o ficheiro .pot."
 
 #: ../../admin/addons.rst:199
 msgid "``intermediate_template``"
@@ -2132,6 +2137,9 @@ msgid ""
 "translation file provided by developers and is used when creating actual "
 "source strings."
 msgstr ""
+"Nome do ficheiro de tradución intermedia. Na maioría dos casos, este é un "
+"ficheiro de tradución fornecido polos desenvolvedores e úsase ao crear as "
+"cadeas de orixe reais."
 
 #: ../../admin/addons.rst:201
 msgid "``language_regex``"
@@ -2155,7 +2163,7 @@ msgstr "``copy_addons``"
 
 #: ../../admin/addons.rst:203
 msgid "Clone add-ons from the main component to the newly created ones"
-msgstr ""
+msgstr "Clonar os engadidos do compoñente principal aos recén creados"
 
 #: ../../admin/addons.rst:205
 msgid "``remove``"
@@ -2163,7 +2171,7 @@ msgstr "``remove``"
 
 #: ../../admin/addons.rst:205
 msgid "Remove components for inexistent files"
-msgstr ""
+msgstr "Retirar os compoñentes de ficheiros inexistentes"
 
 #: ../../admin/addons.rst:207
 msgid "``confirm``"
@@ -2171,7 +2179,7 @@ msgstr "``confirm``"
 
 #: ../../admin/addons.rst:207
 msgid "I confirm the above matches look correct"
-msgstr ""
+msgstr "Confirmo que as coincidencias anteriores parecen correctas"
 
 #: ../../admin/addons.rst:209 ../../admin/addons.rst:705
 #: ../../admin/addons.rst:842
@@ -2538,7 +2546,7 @@ msgstr "``add_flags``"
 
 #: ../../admin/addons.rst:355 ../../admin/addons.rst:386
 msgid "Translation flags to add"
-msgstr "Engadir marcadores para traducións"
+msgstr "Marcadores de tradución para engadir"
 
 #: ../../admin/addons.rst:357
 msgid "``remove_flags``"
@@ -2571,7 +2579,7 @@ msgstr "Comentarios"
 
 #: ../../admin/addons.rst:365
 msgid "Bulk edit flags, labels, or states of strings."
-msgstr ""
+msgstr "Editar en masa as marcas, etiquetas ou o estado das cadeas."
 
 #: ../../admin/addons.rst:367
 msgid ""
@@ -2640,10 +2648,10 @@ msgid ""
 "source string, it is flagged as needing editing in Weblate. Especially "
 "useful for file formats that include source strings for untranslated strings."
 msgstr ""
-"Sempre que se importa unha nova cadea traducíbel do SCV e coincide cunha "
-"cadea de orixe, márcase como necesario editala en Weblate. Especialmente "
-"útil para formatos de ficheiro que inclúen cadeas de orixe para cadeas sen "
-"traducir."
+"Sempre que se importa unha nova cadea traducíbel do SCV (VCS) e coincide "
+"cunha cadea de orixe, márcase como necesario editala en Weblate. "
+"Especialmente útil para formatos de ficheiro que inclúen cadeas de orixe "
+"para cadeas sen traducir."
 
 #: ../../admin/addons.rst:412
 msgid ""
@@ -2670,9 +2678,9 @@ msgid ""
 "needing editing in Weblate. This way you can easily filter and edit source "
 "strings written by the developers."
 msgstr ""
-"Sempre que se importa unha nova cadea de orixe do SCV, márcase como que "
-"precisa de edición en Weblate. Deste xeito, pode filtrar e editar doadamente "
-"as cadeas de orixe escritas polos desenvolvedores."
+"Sempre que se importa unha nova cadea de orixe do SCV (VCS), márcase como "
+"que precisa de edición en Weblate. Deste xeito, pode filtrar e editar "
+"doadamente as cadeas de orixe escritas polos desenvolvedores."
 
 #: ../../admin/addons.rst:439
 msgid "Flag new translations as \"Needs editing\""
@@ -2786,7 +2794,7 @@ msgstr ""
 
 #: ../../admin/addons.rst:524
 msgid "Pseudolocale generation"
-msgstr ""
+msgstr "Xeración de pseudo-configuracións rexionais"
 
 #: ../../admin/addons.rst:528
 msgid "``weblate.generate.pseudolocale``"
@@ -2846,13 +2854,15 @@ msgstr "``var_multiplier``"
 
 #: ../../admin/addons.rst:542
 msgid "Variable part multiplier"
-msgstr ""
+msgstr "Multiplicador de parte variábel"
 
 #: ../../admin/addons.rst:542
 msgid ""
 "How many times to repeat the variable part depending on the length of the "
 "source string."
 msgstr ""
+"Cantas veces repetir a parte variábel dependendo da lonxitude da cadea de "
+"orixe."
 
 #: ../../admin/addons.rst:544
 msgid "``include_readonly``"
@@ -2867,6 +2877,8 @@ msgid ""
 "Generates a translation by adding prefix and suffix to source strings "
 "automatically."
 msgstr ""
+"Xera unha tradución engadindo prefixos e sufixos ás cadeas de orixe "
+"automaticamente."
 
 #: ../../admin/addons.rst:551
 msgid ""
@@ -2938,6 +2950,8 @@ msgid ""
 "Updates the comment part of the PO file header to include contributor names "
 "and years of contributions."
 msgstr ""
+"Actualiza a parte de comentarios da cabeceira do ficheiro PO para incluír os "
+"nomes dos colaboradores e os anos de colaboración."
 
 #: ../../admin/addons.rst:603
 msgid "The PO file header will look like this:"
@@ -2945,7 +2959,7 @@ msgstr ""
 
 #: ../../admin/addons.rst:615
 msgid "Update ALL_LINGUAS variable in the \"configure\" file"
-msgstr ""
+msgstr "Actualizar a variábel ALL_LINGUAS no ficheiro «configure»"
 
 #: ../../admin/addons.rst:617
 msgid "``weblate.gettext.configure``"
@@ -3054,7 +3068,7 @@ msgstr ""
 
 #: ../../admin/addons.rst:660
 msgid "Update LINGUAS file"
-msgstr ""
+msgstr "Actualizar o ficheiro LINGUAS"
 
 #: ../../admin/addons.rst:662
 msgid "``weblate.gettext.linguas``"
@@ -3097,10 +3111,12 @@ msgid ""
 "Strings needing editing (fuzzy) are typically not ready for use as "
 "translations."
 msgstr ""
+"As cadeas que necesitan edición (difusas) non adoitan ser axeitadas para "
+"usalas como tradución."
 
 #: ../../admin/addons.rst:681
 msgid "Automatically generates a MO file for every changed PO file."
-msgstr ""
+msgstr "Xera automaticamente un ficheiro MO para cada ficheiro PO modificado."
 
 #: ../../admin/addons.rst:683
 msgid ""
@@ -3231,7 +3247,7 @@ msgid ""
 "This commit message will be used instead of the combined commit messages "
 "from the squashed commits."
 msgstr ""
-"Esta mensaxe de «commit» empregarase no canto das mensaxes de «commit» "
+"Esta mensaxe de «commit» empregarase en troques das mensaxes de «commit» "
 "combinadas dos «commits» concentrados."
 
 #: ../../admin/addons.rst:739
@@ -3477,7 +3493,7 @@ msgstr "``closing_tags``"
 
 #: ../../admin/addons.rst:865
 msgid "Include closing tag for blank XML tags"
-msgstr ""
+msgstr "Incluír a etiqueta de peche para as etiquetas XML en branco"
 
 #: ../../admin/addons.rst:869
 msgid "Allows adjusting XML output behavior, for example closing tags."
@@ -3781,7 +3797,7 @@ msgstr ":ref:`machine-translation`"
 
 #: ../../admin/admin.rst:27
 msgid "Performance report"
-msgstr ""
+msgstr "Informe de rendemento"
 
 #: ../../admin/admin.rst:29
 msgid ""
@@ -3922,7 +3938,7 @@ msgstr ""
 
 #: ../../admin/announcements.rst:2
 msgid "Announcements"
-msgstr ""
+msgstr "Anuncios"
 
 #: ../../admin/announcements.rst:6
 msgid "In prior releases this feature was called whiteboard messages."
@@ -9044,7 +9060,7 @@ msgstr ""
 
 #: ../../admin/continuous.rst:4
 msgid "Continuous localization"
-msgstr "Localización continua"
+msgstr "Rexionalización continua"
 
 #: ../../admin/continuous.rst:6
 msgid ""
@@ -10195,7 +10211,7 @@ msgstr ""
 
 #: ../../admin/install.rst:174
 msgid "Celery"
-msgstr ""
+msgstr "Celery"
 
 #: ../../admin/install.rst:175
 msgid "https://docs.celeryq.dev/"
@@ -14817,7 +14833,7 @@ msgstr ""
 
 #: ../../admin/languages.rst:171
 msgid "Plural formula"
-msgstr "Forma do plural"
+msgstr "Fórmula de plural"
 
 #: ../../admin/languages.rst:173
 msgid ""
@@ -14868,7 +14884,7 @@ msgstr ""
 
 #: ../../admin/licensing.rst:20 ../../admin/projects.rst:644
 msgid "Contributor agreement"
-msgstr "Conformidade de colaborador"
+msgstr "Acordo de colaborador"
 
 #: ../../admin/licensing.rst:22
 msgid ""
@@ -15086,12 +15102,12 @@ msgstr "``baidu``"
 #: ../../admin/machine.rst:119 ../../admin/machine.rst:425
 #: ../../admin/machine.rst:633
 msgid "Client ID"
-msgstr ""
+msgstr "ID de cliente"
 
 #: ../../admin/machine.rst:121 ../../admin/machine.rst:427
 #: ../../admin/machine.rst:635
 msgid "Client secret"
-msgstr ""
+msgstr "Segredo do cliente"
 
 #: ../../admin/machine.rst:124
 msgid "Machine translation service provided by Baidu."
@@ -15130,14 +15146,14 @@ msgid "``formality``"
 msgstr "``formality``"
 
 #: ../../admin/machine.rst:143
-#, fuzzy
-#| msgid "Somali"
 msgid "Formality"
-msgstr "Somalí"
+msgstr "Formalidade"
 
 #: ../../admin/machine.rst:143
 msgid "Uses the specified formality if language is not specified as (in)formal"
 msgstr ""
+"Usa a formalidade especificada se a linguaxe non está especificada como "
+"(in)formal"
 
 #: ../../admin/machine.rst:146
 msgid ""
@@ -15305,6 +15321,7 @@ msgstr "Proxecto Google Translate"
 #: ../../admin/machine.rst:230
 msgid "Enter the numeric or alphanumeric ID of your Google Cloud project."
 msgstr ""
+"Introduza o ID numérico ou alfanumérico do seu proxecto de Google Cloud."
 
 #: ../../admin/machine.rst:232
 msgid "``location``"
@@ -15319,6 +15336,8 @@ msgid ""
 "Choose a Google Cloud Translation region that is used for the Google Cloud "
 "project or is closest to you."
 msgstr ""
+"Escolla unha rexión de tradución de Google Cloud que sexa utilizada para o "
+"proxecto de Google Cloud ou que estea máis próxima a Vde."
 
 #: ../../admin/machine.rst:237
 msgid ""
@@ -15438,7 +15457,7 @@ msgstr "``base_url``"
 
 #: ../../admin/machine.rst:319
 msgid "Application base URL"
-msgstr ""
+msgstr "URL base da aplicación"
 
 #: ../../admin/machine.rst:321
 msgid "``api.cognitive.microsofttranslator.com`` -- Global (non-regional)"
@@ -15475,6 +15494,8 @@ msgstr "URL do servizo de autenticación"
 #: ../../admin/machine.rst:333
 msgid "Regional or multi-service can be specified using region field below."
 msgstr ""
+"Pódese especificar rexional ou multiservizo empregando o campo rexión "
+"embaixo."
 
 #: ../../admin/machine.rst:337
 msgid "``api.cognitive.microsoft.com`` -- Global"
@@ -15489,10 +15510,8 @@ msgid "``api.cognitive.microsoft.us`` -- Azure US Government cloud"
 msgstr ""
 
 #: ../../admin/machine.rst:343
-#, fuzzy
-#| msgid "Authentication has been cancelled."
 msgid "Authentication service region"
-msgstr "Desbotouse a autentificación."
+msgstr "Rexión do servizo de autenticación"
 
 #: ../../admin/machine.rst:346
 msgid ""
@@ -15564,10 +15583,8 @@ msgid "``email``"
 msgstr "``email``"
 
 #: ../../admin/machine.rst:399
-#, fuzzy
-#| msgid "Committer e-mail"
 msgid "Contact e-mail"
-msgstr "Correo electrónico de quen fixo o envío"
+msgstr "Correo-e de contacto"
 
 #: ../../admin/machine.rst:407
 msgid "Huge translation memory with machine translation."
@@ -15622,10 +15639,8 @@ msgid "``model``"
 msgstr "``model``"
 
 #: ../../admin/machine.rst:449
-#, fuzzy
-#| msgid "Zen mode"
 msgid "OpenAI model"
-msgstr "Modo Cen"
+msgstr "Modelo de OpenAI"
 
 #: ../../admin/machine.rst:451
 #, fuzzy
@@ -15649,32 +15664,31 @@ msgid "``persona``"
 msgstr "``persona``"
 
 #: ../../admin/machine.rst:459
-#, fuzzy
 msgid "Translator persona"
-msgstr "Contexto da tradución"
+msgstr "O tradutor é unha persoa"
 
 #: ../../admin/machine.rst:459
 msgid ""
 "Describe the persona of translator to improve the accuracy of the "
 "translation. For example: “You are a squirrel breeder.”"
 msgstr ""
+"Describa a personalidade do tradutor para mellorar a precisión da tradución. "
+"Por exemplo: «Vde. é un criador de esquíos»."
 
 #: ../../admin/machine.rst:461
-#, fuzzy
-#| msgid "Translation file"
 msgid "Translator style"
-msgstr "Ficheiro da tradución"
+msgstr "Estilo do tradutor"
 
 #: ../../admin/machine.rst:461
 msgid ""
 "Describe the style of translation. For example: “Use informal language.”"
 msgstr ""
+"Describa o estilo da tradución. Por exemplo: «Empregue unha linguaxe "
+"informal»."
 
 #: ../../admin/machine.rst:464
-#, fuzzy
-#| msgid "Perform automatic translation"
 msgid "Performs translation using `OpenAI`_."
-msgstr "Facer unha tradución de xeito automático"
+msgstr "Facer a tradución usando `OpenAI`_."
 
 #: ../../admin/machine.rst:466
 msgid ""
@@ -15683,6 +15697,10 @@ msgid ""
 "available, but you might want to choose a specific model that matches your "
 "needs."
 msgstr ""
+"A API de OpenAI está alimentada por un conxunto diverso de modelos con "
+"diferentes capacidades e prezos. A selección automática escolle o mellor "
+"modelo dispoñíbel, mais quizais queira escoller un modelo específico que se "
+"adapte mellor ás súas necesidades."
 
 #: ../../admin/machine.rst:470
 msgid ""
@@ -15714,30 +15732,24 @@ msgid "``password``"
 msgstr "``password``"
 
 #: ../../admin/machine.rst:496
-#, fuzzy
-#| msgid "Set password"
 msgid "SAP password"
-msgstr "Escriba un contrasinal"
+msgstr "Contrasinal de SAP"
 
 #: ../../admin/machine.rst:498
 msgid "``enable_mt``"
 msgstr "``enable_mt``"
 
 #: ../../admin/machine.rst:498
-#, fuzzy
-#| msgid "Machine translation"
 msgid "Enable machine translation"
-msgstr "Tradución de xeito automático"
+msgstr "Activar a tradución con máquinas"
 
 #: ../../admin/machine.rst:500
 msgid "``domain``"
 msgstr "``domain``"
 
 #: ../../admin/machine.rst:500
-#, fuzzy
-#| msgid "Translation Information"
 msgid "Translation domain"
-msgstr "Información da tradución"
+msgstr "Dominio da tradución"
 
 #: ../../admin/machine.rst:500
 msgid ""
@@ -17518,7 +17530,7 @@ msgstr ""
 
 #: ../../admin/projects.rst:2 ../../user/translating.rst:26
 msgid "Translation projects"
-msgstr "Proxectos da tradución"
+msgstr "Proxectos de tradución"
 
 #: ../../admin/projects.rst:5
 msgid "Translation organization"
@@ -17660,7 +17672,7 @@ msgstr ""
 
 #: ../../admin/projects.rst:81
 msgid "Start from scratch"
-msgstr ""
+msgstr "Comezar dende cero"
 
 #: ../../admin/projects.rst:81
 msgid "Create blank translation project and add strings manually."
@@ -17738,7 +17750,7 @@ msgstr ""
 #: ../../admin/projects.rst:142 ../../api.rst:806
 #: ../../contributing/about.rst:16
 msgid "Project website"
-msgstr "Páxina web do proxecto"
+msgstr "Sitio web do proxecto"
 
 #: ../../admin/projects.rst:144
 msgid "URL where translators can find more info about the project."
@@ -17819,10 +17831,8 @@ msgstr ""
 
 #: ../../admin/projects.rst:206 ../../workflows.rst:108 ../../workflows.rst:140
 #: ../../workflows.rst:173
-#, fuzzy
-#| msgid "Invalid suggestion!"
 msgid "Enable reviews"
-msgstr "Suxestión incorrecta!"
+msgstr "Activar as revisións"
 
 #: ../../admin/projects.rst:208
 msgid "Enable review workflow for translations, see :ref:`reviews`."
@@ -17834,10 +17844,8 @@ msgid ":ref:`workflow-customization`"
 msgstr ":ref:`workflow-customization`"
 
 #: ../../admin/projects.rst:217
-#, fuzzy
-#| msgid "Invalid suggestion!"
 msgid "Enable source reviews"
-msgstr "Suxestión incorrecta!"
+msgstr "Activar as revisións da orixe"
 
 #: ../../admin/projects.rst:219
 msgid "Enable review workflow for source strings, see :ref:`source-reviews`."
@@ -17848,10 +17856,8 @@ msgid ":ref:`report-source`, :ref:`user-comments`"
 msgstr ""
 
 #: ../../admin/projects.rst:229
-#, fuzzy
-#| msgid "Invalid suggestion!"
 msgid "Enable hooks"
-msgstr "Suxestión incorrecta!"
+msgstr "Activar os ganchos"
 
 #: ../../admin/projects.rst:231
 msgid ""
@@ -17865,10 +17871,8 @@ msgid ""
 msgstr ""
 
 #: ../../admin/projects.rst:243
-#, fuzzy
-#| msgid "Language name"
 msgid "Language aliases"
-msgstr "Nome da lingua"
+msgstr "Alias de idiomas"
 
 #: ../../admin/projects.rst:245
 msgid ""
@@ -17978,7 +17982,7 @@ msgstr ""
 
 #: ../../admin/projects.rst:324
 msgid "Version control system"
-msgstr ""
+msgstr "Sistema de control de versións"
 
 #: ../../admin/projects.rst:326
 msgid "VCS to use, see :ref:`vcs` for details."
@@ -18009,7 +18013,7 @@ msgstr ""
 
 #: ../../admin/projects.rst:352
 msgid "Repository push URL"
-msgstr "URL de envío ó repositorio"
+msgstr "URL de envío cara ao repositorio"
 
 #: ../../admin/projects.rst:354
 msgid ""
@@ -18032,7 +18036,7 @@ msgstr ""
 
 #: ../../admin/projects.rst:368
 msgid "Repository browser"
-msgstr "Procurador do repositorio"
+msgstr "Navegador do repositorio"
 
 #: ../../admin/projects.rst:370
 msgid ""
@@ -18217,7 +18221,7 @@ msgstr ""
 
 #: ../../admin/projects.rst:486
 msgid "Edit base file"
-msgstr ""
+msgstr "Editar o ficheiro base"
 
 #: ../../admin/projects.rst:488
 msgid "Whether to allow editing strings in the :ref:`component-template`."
@@ -18595,6 +18599,7 @@ msgstr ""
 #: ../../admin/projects.rst:732
 msgid "POSIX style using underscore as a separator, including country code"
 msgstr ""
+"Estilo POSIX usando trazo baixo como separador, incluíndo o código do país"
 
 #: ../../admin/projects.rst:732
 msgid ""
@@ -18628,6 +18633,7 @@ msgstr ""
 #: ../../admin/projects.rst:741
 msgid "BCP style using hyphen as a separator, including country code"
 msgstr ""
+"Estilo BCP utilizando o guión como separador, incluíndo o código do país"
 
 #: ../../admin/projects.rst:741
 msgid ""
@@ -18653,7 +18659,7 @@ msgstr ""
 
 #: ../../admin/projects.rst:747
 msgid "Apple App Store metadata style"
-msgstr ""
+msgstr "Estilo de metadatos de Apple App Store"
 
 #: ../../admin/projects.rst:748
 msgid "Style suitable for uploading metadata to Apple App Store."
@@ -18661,7 +18667,7 @@ msgstr ""
 
 #: ../../admin/projects.rst:749
 msgid "Google Play metadata style"
-msgstr ""
+msgstr "Estilo de metadatos de Google Play"
 
 #: ../../admin/projects.rst:750
 msgid "Style suitable for uploading metadata to Google Play Store."
@@ -18694,7 +18700,7 @@ msgstr "Comentarios"
 
 #: ../../admin/projects.rst:767
 msgid "Merge style"
-msgstr "Estilo de fusión"
+msgstr "Estilo de fusión (merge)"
 
 #: ../../admin/projects.rst:769
 msgid ""
@@ -18704,7 +18710,7 @@ msgstr ""
 
 #: ../../admin/projects.rst:780
 msgid "Rebase"
-msgstr ""
+msgstr "«Rebase»"
 
 #: ../../admin/projects.rst:773
 msgid ""
@@ -18737,7 +18743,7 @@ msgstr ""
 
 #: ../../admin/projects.rst:790
 msgid "Merge without fast-forward"
-msgstr "Fusionar sen avance rápido"
+msgstr "Fusionar (merge) sen avance rápido"
 
 #: ../../admin/projects.rst:788
 msgid ""
@@ -18804,7 +18810,7 @@ msgstr ""
 
 #: ../../admin/projects.rst:842
 msgid "Lock on error"
-msgstr ""
+msgstr "Bloquear ao producirse un erro"
 
 #: ../../admin/projects.rst:844
 msgid ""
@@ -18822,7 +18828,7 @@ msgstr ""
 
 #: ../../admin/projects.rst:854
 msgid "Source language"
-msgstr "Lingua da orixe"
+msgstr "Idioma de orixe"
 
 #: ../../admin/projects.rst:856
 msgid ""
@@ -18939,6 +18945,7 @@ msgstr "Prioridade"
 #: ../../admin/projects.rst:920
 msgid "Components with higher priority are offered first to translators."
 msgstr ""
+"Os compoñentes con maior prioridade ofrécense de primeiros aos tradutores."
 
 #: ../../admin/projects.rst:924
 msgid "This now also affects ordering of matched glossary terms."
@@ -19028,7 +19035,7 @@ msgstr ""
 
 #: ../../admin/projects.rst:994
 msgid "Category"
-msgstr ""
+msgstr "Categoría"
 
 #: ../../admin/projects.rst:996
 msgid ""
@@ -19462,7 +19469,7 @@ msgstr ""
 
 #: ../../admin/support.rst:52
 msgid "Discover Weblate"
-msgstr "Detactar Weblate"
+msgstr "Detectar Weblate"
 
 #: ../../admin/support.rst:56
 msgid ""
@@ -19528,7 +19535,7 @@ msgstr ""
 
 #: ../../admin/translating.rst:2
 msgid "Translation process"
-msgstr "Proceso da tradución"
+msgstr "Proceso de tradución"
 
 #: ../../admin/translating.rst:9
 msgid ""
@@ -20423,7 +20430,7 @@ msgstr ""
 
 #: ../../api.rst:455
 msgid "Group name"
-msgstr "Nome do grupo"
+msgstr "Nome de grupo"
 
 #: ../../api.rst:457
 msgid "Group of project selection from given options"
@@ -20688,7 +20695,7 @@ msgstr "URL semántico («slug») do proxecto"
 
 #: ../../api.rst:815
 msgid "project name"
-msgstr ""
+msgstr "nome do proxecto"
 
 #: ../../api.rst:816
 msgid "project slug"
@@ -21645,6 +21652,8 @@ msgid ""
 "Turn on contribution to shared translation memory for the project to get "
 "access to additional components."
 msgstr ""
+"Activar a achega á memoria de tradución compartida para que o proxecto teña "
+"acceso a compoñentes adicionais."
 
 #: ../../api.rst:1928
 msgid ""
@@ -22879,7 +22888,7 @@ msgstr ""
 
 #: ../../api.rst:2833
 msgid "RSS feeds"
-msgstr "Canles RSS"
+msgstr "Fontes RSS"
 
 #: ../../api.rst:2835
 msgid "Changes in translations are exported in RSS feeds."
@@ -32848,7 +32857,7 @@ msgstr ""
 
 #: ../../contributing/frontend.rst:55
 msgid "Localization"
-msgstr "Localización"
+msgstr "Rexionalización"
 
 #: ../../contributing/frontend.rst:57
 msgid ""
@@ -33367,7 +33376,7 @@ msgstr ""
 
 #: ../../contributing/issues.rst:19
 msgid "Security issues"
-msgstr "Problemas de seguranza"
+msgstr "Incidencias de seguranza"
 
 #: ../../contributing/issues.rst:21
 msgid ""
@@ -34835,7 +34844,7 @@ msgstr ""
 
 #: ../../devel/community.rst:11
 msgid "Community localization checklist"
-msgstr ""
+msgstr "Lista de control de rexionalización da comunidade"
 
 #: ../../devel/community.rst:13
 msgid ""
@@ -34865,7 +34874,7 @@ msgstr ""
 
 #: ../../devel/community.rst:27
 msgid "Machine translation"
-msgstr "Tradución de xeito automático"
+msgstr "Tradución con máquinas"
 
 #: ../../devel/community.rst:28
 msgid ""
@@ -37231,7 +37240,7 @@ msgstr ""
 
 #: ../../faq.rst:495
 msgid "Features"
-msgstr "Funcións"
+msgstr "Funcionalidades"
 
 #: ../../faq.rst:500
 msgid "Does Weblate support other VCSes than Git and Mercurial?"
@@ -37529,7 +37538,7 @@ msgstr ":ref:`javaprop`"
 #: ../../user/checks.rst:1675 ../../user/checks.rst:1676
 #: ../../user/checks.rst:1677 ../../user/checks.rst:1681
 msgid "no"
-msgstr "no"
+msgstr "non"
 
 #: ../../formats.rst:83
 msgid ":ref:`mi18n-lang`"
@@ -37905,7 +37914,7 @@ msgstr ""
 
 #: ../../formats/android.rst:4
 msgid "Android string resources"
-msgstr ""
+msgstr "Recursos de cadeas de Android"
 
 #: ../../formats/android.rst:10
 msgid "Android specific file format for translating applications."
@@ -38052,7 +38061,7 @@ msgstr ""
 
 #: ../../formats/apple.rst:4
 msgid "Apple iOS strings"
-msgstr ""
+msgstr "Cadeas de iOS de Apple"
 
 #: ../../formats/apple.rst:9
 msgid ""
@@ -38093,7 +38102,7 @@ msgstr ""
 
 #: ../../formats/appstore.rst:4
 msgid "App store metadata files"
-msgstr ""
+msgstr "Ficheiros de metadatos da tenda de aplicacións"
 
 #: ../../formats/appstore.rst:6
 msgid ""
@@ -38146,7 +38155,7 @@ msgstr ""
 
 #: ../../formats/arb.rst:4
 msgid "ARB File"
-msgstr ""
+msgstr "Ficheiro ARB"
 
 #: ../../formats/arb.rst:11
 msgid ""
@@ -38175,7 +38184,7 @@ msgstr ""
 
 #: ../../formats/csv.rst:4
 msgid "CSV files"
-msgstr ""
+msgstr "Ficheiros CSV"
 
 #: ../../formats/csv.rst:10
 msgid ""
@@ -38290,7 +38299,7 @@ msgstr ""
 
 #: ../../formats/dtd.rst:4
 msgid "DTD files"
-msgstr ""
+msgstr "Ficheiros DTD"
 
 #: ../../formats/dtd.rst:9
 msgid ":doc:`tt:formats/dtd`"
@@ -38314,7 +38323,7 @@ msgstr ""
 
 #: ../../formats/excel.rst:4
 msgid "Excel Open XML"
-msgstr ""
+msgstr "Open XML de Excel"
 
 #: ../../formats/excel.rst:6
 msgid "Excel Open XML (.xlsx) files can be imported and exported."
@@ -38346,7 +38355,7 @@ msgstr ""
 
 #: ../../formats/flatxml.rst:4
 msgid "Flat XML files"
-msgstr ""
+msgstr "Ficheiro XML simple"
 
 #: ../../formats/flatxml.rst:9
 msgid ":doc:`tt:formats/flatxml`"
@@ -38369,10 +38378,8 @@ msgid "`Flat XML file`"
 msgstr ""
 
 #: ../../formats/fluent.rst:4
-#, fuzzy
-#| msgid "C format"
 msgid "Fluent format"
-msgstr "Formato C"
+msgstr "Formato Fluent"
 
 #: ../../snippets/format-in-development.rst:3
 msgid ""
@@ -38521,7 +38528,7 @@ msgstr ""
 
 #: ../../formats/go-i18n.rst:4
 msgid "go-i18n JSON files"
-msgstr ""
+msgstr "Ficheiros JSON de go-i18n"
 
 #: ../../formats/go-i18n.rst:13
 msgid "Support for v2 variant of this format was added."
@@ -38589,10 +38596,8 @@ msgid "`go-i18n v2 JSON file`"
 msgstr "Xerar"
 
 #: ../../formats/gotext.rst:4
-#, fuzzy
-#| msgid "Generate"
 msgid "gotext JSON files"
-msgstr "Xerar"
+msgstr "Ficheiros JSON de gotext"
 
 #: ../../formats/gotext.rst:11
 msgid ""
@@ -38624,7 +38629,7 @@ msgstr "Xerar"
 
 #: ../../formats/gwt.rst:4
 msgid "GWT properties"
-msgstr ""
+msgstr "Propiedades de GWT"
 
 #: ../../formats/gwt.rst:9
 msgid "Native GWT format for translations."
@@ -38657,7 +38662,7 @@ msgstr ""
 
 #: ../../formats/html.rst:4
 msgid "HTML files"
-msgstr ""
+msgstr "Ficheiros HTML"
 
 #: ../../formats/html.rst:8
 msgid ""
@@ -38692,10 +38697,8 @@ msgid "`HTML file`"
 msgstr "Código HTML"
 
 #: ../../formats/i18next.rst:4
-#, fuzzy
-#| msgid "Generate"
 msgid "i18next JSON files"
-msgstr "Xerar"
+msgstr "Ficheiros JSON de i18next"
 
 #: ../../formats/i18next.rst:11
 msgid "Support for v4 variant of this format was added."
@@ -38748,7 +38751,7 @@ msgstr "Xerar"
 
 #: ../../formats/idml.rst:4
 msgid "IDML Format"
-msgstr ""
+msgstr "Formato IDML"
 
 #: ../../formats/idml.rst:10
 msgid ""
@@ -38773,7 +38776,7 @@ msgstr "Falla o ficheiro"
 
 #: ../../formats/ini.rst:4
 msgid "INI translations"
-msgstr ""
+msgstr "Traducións en INI"
 
 #: ../../formats/ini.rst:11
 msgid ""
@@ -38815,10 +38818,8 @@ msgid "`INI File`"
 msgstr ""
 
 #: ../../formats/innosetup.rst:4
-#, fuzzy
-#| msgid "Suggested translations"
 msgid "Inno Setup INI translations"
-msgstr "Traducións suxeridas"
+msgstr "Traducións INI de Inno Setup"
 
 #: ../../formats/innosetup.rst:11
 #, fuzzy
@@ -38863,7 +38864,7 @@ msgstr ""
 
 #: ../../formats/java.rst:5
 msgid "Java properties"
-msgstr ""
+msgstr "Propiedades de Java"
 
 #: ../../formats/java.rst:10
 msgid "Native Java format for translations."
@@ -38902,7 +38903,7 @@ msgstr ""
 
 #: ../../formats/joomla.rst:4
 msgid "Joomla translations"
-msgstr ""
+msgstr "Traducións de Joomla"
 
 #: ../../formats/joomla.rst:9
 msgid "Native Joomla format for translations."
@@ -38930,7 +38931,7 @@ msgstr ""
 
 #: ../../formats/json.rst:4
 msgid "JSON files"
-msgstr ""
+msgstr "Ficheiros JSON"
 
 #: ../../formats/json.rst:11
 msgid ""
@@ -39030,10 +39031,8 @@ msgid "`Laravel PHP strings`"
 msgstr "Cadeas PHP"
 
 #: ../../formats/markdown.rst:4
-#, fuzzy
-#| msgid "Context"
 msgid "Markdown files"
-msgstr "Contexto"
+msgstr "Ficheiros de Markdown"
 
 #: ../../formats/markdown.rst:10
 msgid ""
@@ -39065,10 +39064,8 @@ msgid "`Markdown file`"
 msgstr "Contexto"
 
 #: ../../formats/mi18n.rst:4
-#, fuzzy
-#| msgid "Failing file"
 msgid "mi18n lang files"
-msgstr "Falla o ficheiro"
+msgstr "Ficheiros de idioma mi18n"
 
 #: ../../formats/mi18n.rst:11
 msgid ""
@@ -39099,7 +39096,7 @@ msgstr "Falla o ficheiro"
 
 #: ../../formats/moko.rst:2
 msgid "Mobile Kotlin resources"
-msgstr ""
+msgstr "Recursos de Kotlin para dispositivos móbiles"
 
 #: ../../formats/moko.rst:9
 msgid ""
@@ -39121,7 +39118,7 @@ msgstr ""
 
 #: ../../formats/odf.rst:4
 msgid "OpenDocument Format"
-msgstr ""
+msgstr "Formato OpenDocument"
 
 #: ../../formats/odf.rst:8
 msgid ""
@@ -39181,7 +39178,7 @@ msgstr ""
 
 #: ../../formats/qt.rst:4
 msgid "Qt Linguist .ts"
-msgstr ""
+msgstr ".ts de Qt Linguist"
 
 #: ../../formats/qt.rst:10
 msgid "Translation format used in Qt based applications."
@@ -39223,10 +39220,8 @@ msgid "``i18n/app.en.ts``"
 msgstr ""
 
 #: ../../formats/resourcedict.rst:4
-#, fuzzy
-#| msgid "Repository details"
 msgid "ResourceDictionary files"
-msgstr "Detalles do repositorio"
+msgstr "Ficheiros de ResourceDictionary"
 
 #: ../../formats/resourcedict.rst:12
 msgid ""
@@ -39258,10 +39253,8 @@ msgid "`ResourceDictionary file`"
 msgstr "Detalles do repositorio"
 
 #: ../../formats/resx.rst:4
-#, fuzzy
-#| msgid "Source string:"
 msgid ".NET resource files (RESX, RESW)"
-msgstr "Cadea de orixe:"
+msgstr "Ficheiros de recursos .NET (RESX, RESW)"
 
 #: ../../formats/resx.rst:11
 msgid ""
@@ -39298,7 +39291,7 @@ msgstr "Cadea de orixe:"
 
 #: ../../formats/ruby.rst:4
 msgid "Ruby YAML files"
-msgstr ""
+msgstr "Ficheiros YAML de Ruby"
 
 #: ../../formats/ruby.rst:10
 msgid "Ruby i18n YAML files with language as root node."
@@ -39325,10 +39318,8 @@ msgid "`Ruby YAML file`"
 msgstr ""
 
 #: ../../formats/stringsdict.rst:4
-#, fuzzy
-#| msgid "Strings with comments"
 msgid "Stringsdict format"
-msgstr "Cadeas con comentarios"
+msgstr "Formato stringsdict"
 
 #: ../../formats/stringsdict.rst:8
 msgid ""
@@ -39360,7 +39351,7 @@ msgstr "Cadeas con comentarios"
 
 #: ../../formats/subtitles.rst:4
 msgid "Subtitle files"
-msgstr ""
+msgstr "Ficheiros de subtítulos"
 
 #: ../../formats/subtitles.rst:6
 #, fuzzy
@@ -39401,10 +39392,8 @@ msgid "`SubRip subtitle file`"
 msgstr ""
 
 #: ../../formats/tbx.rst:4
-#, fuzzy
-#| msgid "Requested new language"
 msgid "TermBase eXchange format"
-msgstr "Solicitouse unha nova lingua"
+msgstr "Formato TermBase eXchange"
 
 #: ../../formats/tbx.rst:6
 #, fuzzy
@@ -39465,10 +39454,8 @@ msgid "`TermBase eXchange file`"
 msgstr "Solicitouse unha nova lingua"
 
 #: ../../formats/txt.rst:4
-#, fuzzy
-#| msgid "Profile"
 msgid "Text files"
-msgstr "Perfil"
+msgstr "Ficheiros de texto"
 
 #: ../../formats/txt.rst:8
 msgid ""
@@ -39487,11 +39474,11 @@ msgstr "Ficheiro de texto simple"
 
 #: ../../formats/txt.rst:14
 msgid "DokuWiki text file"
-msgstr ""
+msgstr "Ficheiro de texto de DokuWiki"
 
 #: ../../formats/txt.rst:15
 msgid "MediaWiki text file"
-msgstr ""
+msgstr "Ficheiro de texto de MediaWiki"
 
 #: ../../formats/txt.rst:22
 msgid ":doc:`tt:formats/text`"
@@ -39513,7 +39500,7 @@ msgstr "Perfil"
 
 #: ../../formats/webextension.rst:4
 msgid "WebExtension JSON"
-msgstr ""
+msgstr "JSON para WebExtension"
 
 #: ../../formats/webextension.rst:6
 msgid ""
@@ -39550,7 +39537,7 @@ msgstr ""
 
 #: ../../formats/winrc.rst:4
 msgid "Windows RC files"
-msgstr ""
+msgstr "Ficheiros RC de Windows"
 
 #: ../../formats/winrc.rst:8
 msgid "Support for Windows RC files has been rewritten."
@@ -39798,7 +39785,7 @@ msgstr ""
 
 #: ../../formats/yaml.rst:4
 msgid "YAML files"
-msgstr ""
+msgstr "Ficheiros YAML"
 
 #: ../../formats/yaml.rst:10
 msgid ""
@@ -40292,7 +40279,7 @@ msgstr "Fusionar o contido da cabeceira do ficheiro na tradución."
 
 #: ../../user/checks.rst:44
 msgid "Devanagari danda"
-msgstr ""
+msgstr "Danda (barra) de devanagari"
 
 #: ../../user/checks.rst:46
 msgid "Replaces wrong full stop in Devanagari by Devanagari danda (``।``)."
@@ -40457,7 +40444,7 @@ msgstr "Palabras duplicadas consecutivas"
 
 #: ../../user/checks.rst:125
 msgid "Text contains the same word twice in a row:"
-msgstr ""
+msgstr "O texto contén a mesma palabra dúas veces seguidas:"
 
 #: ../../user/checks.rst:127
 msgid "``weblate.checks.duplicate.DuplicateCheck``"
@@ -40529,7 +40516,7 @@ msgstr "Comentarios"
 
 #: ../../user/checks.rst:169
 msgid "Double space"
-msgstr ""
+msgstr "Dobre espazo"
 
 #: ../../user/checks.rst:171
 msgid "Translation contains double space"
@@ -40974,7 +40961,7 @@ msgstr ""
 
 #: ../../user/checks.rst:478
 msgid "ECMAScript template literals"
-msgstr ""
+msgstr "Literais de modelos ECMAScript"
 
 #: ../../user/checks.rst:480
 msgid "ECMAScript template literals do not match source"
@@ -41250,7 +41237,7 @@ msgstr ""
 
 #: ../../user/checks.rst:638
 msgid "JavaScript format"
-msgstr ""
+msgstr "Formato JavaScript"
 
 #: ../../user/checks.rst:640
 msgid "JavaScript format string does not match source"
@@ -41506,7 +41493,7 @@ msgstr "Formato de plurais de Qt"
 
 #: ../../user/checks.rst:831
 msgid "Qt plural format string does not match source"
-msgstr "A cadea en formato de plurais de Qt non coincide coa orixe"
+msgstr "A cadea en formato de plural de Qt non coincide coa orixe"
 
 #: ../../user/checks.rst:833
 msgid "``weblate.checks.qt.QtPluralCheck``"
@@ -41746,11 +41733,11 @@ msgstr ""
 
 #: ../../user/checks.rst:966
 msgid "Kashida letter used"
-msgstr ""
+msgstr "Usouse unha letra kashida"
 
 #: ../../user/checks.rst:968
 msgid "The decorative kashida letters should not be used"
-msgstr ""
+msgstr "Non se deben usar as letras decorativas kashida"
 
 #: ../../user/checks.rst:970
 msgid "``weblate.checks.chars.KashidaCheck``"
@@ -41772,7 +41759,7 @@ msgstr ""
 
 #: ../../user/checks.rst:985
 msgid "Markdown links"
-msgstr ""
+msgstr "Ligazóns de Markdown"
 
 #: ../../user/checks.rst:987
 msgid "Markdown links do not match source"
@@ -41821,7 +41808,7 @@ msgstr ""
 
 #: ../../user/checks.rst:1022
 msgid "Markdown syntax"
-msgstr ""
+msgstr "Sintaxe de Markdown"
 
 #: ../../user/checks.rst:1024 ../../user/checks.rst:1031
 msgid "Markdown syntax does not match source"
@@ -41991,11 +41978,12 @@ msgstr ""
 
 #: ../../user/checks.rst:1145
 msgid "Mismatched ellipsis"
-msgstr "Os puntos suspensivos non coinciden"
+msgstr "Os puntos suspensivos (elipse) non coinciden"
 
 #: ../../user/checks.rst:1147
 msgid "Source and translation do not both end with an ellipsis"
-msgstr "Orixe e tradución non rematan ámbalas dúas con puntos suspensivos"
+msgstr ""
+"Orixe e tradución non rematan ámbalas dúas con puntos suspensivos (elipse)"
 
 #: ../../user/checks.rst:1149
 msgid "``weblate.checks.chars.EndEllipsisCheck``"
@@ -42138,7 +42126,7 @@ msgstr ""
 
 #: ../../user/checks.rst:1242
 msgid "Mismatching line breaks"
-msgstr ""
+msgstr "Non coinciden os saltos de liña"
 
 #: ../../user/checks.rst:1244
 msgid "Number of new lines in translation does not match source"
@@ -42164,7 +42152,7 @@ msgstr "Faltan plurais"
 
 #: ../../user/checks.rst:1259
 msgid "Some plural forms are untranslated"
-msgstr "Algunhas formas do plural non están traducidas"
+msgstr "Algunhas formas de plural non están traducidas"
 
 #: ../../user/checks.rst:1261
 #, fuzzy
@@ -42191,7 +42179,7 @@ msgstr ""
 
 #: ../../user/checks.rst:1274
 msgid "Placeholders"
-msgstr ""
+msgstr "Marcadores de posición"
 
 #: ../../user/checks.rst:1276
 msgid "Translation is missing some placeholders"
@@ -42312,7 +42300,7 @@ msgstr "Os mesmos plurais"
 
 #: ../../user/checks.rst:1377
 msgid "Some plural forms are translated in the same way"
-msgstr "Algunhas formas do plural tradúcense do mesmo xeito"
+msgstr "Algunhas formas de plural tradúcense do mesmo xeito"
 
 #: ../../user/checks.rst:1379
 #, fuzzy
@@ -42478,7 +42466,7 @@ msgstr "Comentarios"
 
 #: ../../user/checks.rst:1490
 msgid "Unsafe HTML"
-msgstr ""
+msgstr "HTML non seguro"
 
 #: ../../user/checks.rst:1492
 msgid "The translation uses unsafe HTML markup"
@@ -42528,7 +42516,7 @@ msgstr ""
 
 #: ../../user/checks.rst:1533
 msgid "XML markup"
-msgstr ""
+msgstr "Marcado XML"
 
 #: ../../user/checks.rst:1535
 msgid "XML tags in translation do not match source"
@@ -42568,7 +42556,7 @@ msgstr ""
 
 #: ../../user/checks.rst:1557
 msgid "XML syntax"
-msgstr ""
+msgstr "Sintaxe XML"
 
 #: ../../user/checks.rst:1559
 msgid "The translation is not valid XML"
@@ -42632,11 +42620,11 @@ msgstr ""
 
 #: ../../user/checks.rst:1605
 msgid "Ellipsis"
-msgstr ""
+msgstr "Puntos suspensivos (elipse)"
 
 #: ../../user/checks.rst:1607
 msgid "The string uses three dots (...) instead of an ellipsis character (…)"
-msgstr ""
+msgstr "A cadea usa tres puntos (...) en troques dun carácter de elipse (…)"
 
 #: ../../user/checks.rst:1608 ../../user/checks.rst:1630
 #: ../../user/checks.rst:1716 ../../user/checks.rst:1741
@@ -42994,7 +42982,7 @@ msgstr "Fallaron varias comprobacións"
 
 #: ../../user/checks.rst:1771
 msgid "The translations in several languages have failing checks"
-msgstr ""
+msgstr "As traducións en varios idiomas teñen comprobacións falladas"
 
 #: ../../user/checks.rst:1773
 msgid "``weblate.checks.source.MultipleFailingCheck``"
@@ -43020,13 +43008,15 @@ msgstr ""
 
 #: ../../user/checks.rst:1788
 msgid "Multiple unnamed variables"
-msgstr ""
+msgstr "Varias variábeis sen nome"
 
 #: ../../user/checks.rst:1792
 msgid ""
 "There are multiple unnamed variables in the string, making it impossible for "
 "translators to reorder them"
 msgstr ""
+"Hai varias variábeis sen nome na cadea, polo que non é posíbel que os "
+"tradutores poidan reordenalas"
 
 #: ../../user/checks.rst:1794
 msgid "``weblate.checks.format.MultipleUnnamedFormatsCheck``"
@@ -43053,7 +43043,7 @@ msgstr "Sen pluralizar"
 
 #: ../../user/checks.rst:1808
 msgid "The string is used as plural, but not using plural forms"
-msgstr ""
+msgstr "A cadea úsase en plural, mais sen empregar formas de plural"
 
 #: ../../user/checks.rst:1810
 msgid "``weblate.checks.source.OptionalPluralCheck``"
@@ -43530,7 +43520,7 @@ msgstr ""
 
 #: ../../user/glossary.rst:89
 msgid "Terminology"
-msgstr ""
+msgstr "Terminoloxía"
 
 #: ../../user/glossary.rst:93
 msgid ""
@@ -43906,6 +43896,9 @@ msgid ""
 "and by filling them out, you're giving us consent to share this data "
 "wherever your user profile appears."
 msgstr ""
+"Todos os campos desta páxina son opcionais e pódense eliminar en calquera "
+"momento e, ao cubrilos, concédenos o consentimento para compartir estes "
+"datos alí onde apareza o seu perfil de usuario."
 
 #: ../../user/profile.rst:219
 msgid ""
@@ -45218,6 +45211,9 @@ msgid ""
 "Don’t worry about messing up the strings. This is a two-step process showing "
 "a preview of edited strings before the actual change is confirmed."
 msgstr ""
+"Non se preocupe por estragar as cadeas. Este é un proceso de dous pasos que "
+"amosa unha vista previa das cadeas editadas antes de que se confirme o "
+"cambio real."
 
 #: ../../user/translating.rst:409
 msgid ""
@@ -45663,7 +45659,7 @@ msgstr ""
 
 #: ../../vcs.rst:275
 msgid "Git with force push"
-msgstr ""
+msgstr "Git con «push» forzado"
 
 #: ../../vcs.rst:277
 msgid ""
@@ -46412,10 +46408,8 @@ msgid ""
 msgstr ""
 
 #: ../../workflows.rst:16
-#, fuzzy
-#| msgid "Administration"
 msgid "Workflow customization"
-msgstr "Administración"
+msgstr "Personalización do fluxo de traballo"
 
 #: ../../workflows.rst:18
 msgid ""
@@ -46596,7 +46590,7 @@ msgstr "Nota"
 #: ../../workflows.rst:108 ../../workflows.rst:113 ../../workflows.rst:140
 #: ../../workflows.rst:144 ../../workflows.rst:175 ../../workflows.rst:178
 msgid "off"
-msgstr ""
+msgstr "apagado"
 
 #: ../../workflows.rst:108 ../../workflows.rst:140 ../../workflows.rst:173
 msgid "Configured at project level."

@@ -12,7 +12,7 @@ msgstr ""
 "Project-Id-Version: Weblate 5.4\n"
 "Report-Msgid-Bugs-To: https://github.com/WeblateOrg/weblate/issues\n"
 "POT-Creation-Date: 2024-02-14 14:18+0000\n"
-"PO-Revision-Date: 2024-03-28 01:02+0000\n"
+"PO-Revision-Date: 2024-04-13 17:01+0000\n"
 "Last-Translator: amano <amano@users.noreply.hosted.weblate.org>\n"
 "Language-Team: Japanese <https://hosted.weblate.org/projects/weblate/"
 "application/ja/>\n"
@@ -1652,8 +1652,8 @@ msgid ""
 "Updates the ALL_LINGUAS variable in \"configure\", \"configure.in\" or "
 "\"configure.ac\" files, when a new translation is added."
 msgstr ""
-"新しい翻訳を追加すると、configure、configure.in、configure.ac ファイルの "
-"ALL_LINGUAS 変数が更新されます。"
+"新しい翻訳が追加されたときに、configure、configure.in、configure.ac "
+"ファイルの ALL_LINGUAS 変数を更新します。"
 
 #: weblate/addons/gettext.py:224
 msgid "Update PO files to match POT (msgmerge)"
@@ -4751,7 +4751,7 @@ msgstr "認証サービス URL"
 
 #: weblate/machinery/forms.py:156
 msgid "Regional or multi-service can be specified using region field below."
-msgstr "地域またはマルチサービスは、以下の地域フィールドを使用して指定します。"
+msgstr "以下の地域欄で、地域サービスまたはマルチサービスを指定することができます。"
 
 #: weblate/machinery/forms.py:162
 msgctxt "Automatic suggestion service configuration"
@@ -12154,7 +12154,7 @@ msgstr "今年"
 
 #: weblate/trans/forms.py:1256
 msgid "Last year"
-msgstr "昨年"
+msgstr "この１年"
 
 #: weblate/trans/forms.py:1257
 msgid "As specified below"
@@ -12266,7 +12266,7 @@ msgstr "アクセス"
 #: weblate/trans/forms.py:2185
 msgid ""
 "Uses and contributes to the pool of shared translations between projects."
-msgstr "プロジェクト間で翻訳を相互に共有してください。"
+msgstr "プロジェクト間で翻訳を相互に共有します。"
 
 #: weblate/trans/forms.py:2251
 msgid "ZIP file containing project backup"

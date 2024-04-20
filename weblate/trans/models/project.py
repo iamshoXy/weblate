@@ -31,6 +31,7 @@ from weblate.utils.data import data_dir
 from weblate.utils.site import get_site_url
 from weblate.utils.stats import ProjectLanguage, ProjectStats, prefetch_stats
 from weblate.utils.validators import (
+    WeblateURLValidator,
     validate_language_aliases,
     validate_project_name,
     validate_project_web,
@@ -145,7 +146,7 @@ class Project(models.Model, PathMixin, CacheKeyMixin):
         verbose_name=gettext_lazy("Project website"),
         blank=not settings.WEBSITE_REQUIRED,
         help_text=gettext_lazy("Main website of translated project."),
-        validators=[validate_project_web],
+        validators=[WeblateURLValidator(), validate_project_web],
     )
     instructions = models.TextField(
         verbose_name=gettext_lazy("Translation instructions"),
@@ -322,13 +323,14 @@ class Project(models.Model, PathMixin, CacheKeyMixin):
                 group_objs = self.defined_groups.all()
             else:
                 raise
-        user.groups.add(*group_objs)
+        for team in group_objs:
+            user.add_team(None, team)
         user.profile.watched.add(self)
 
     def remove_user(self, user) -> None:
         """Add user based on username or email address."""
-        groups = self.defined_groups.all()
-        user.groups.remove(*groups)
+        for group in self.defined_groups.iterator():
+            user.remove_team(None, group)
 
     def get_url_path(self):
         return (self.slug,)

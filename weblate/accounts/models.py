@@ -40,6 +40,7 @@ from weblate.utils.fields import EmailField
 from weblate.utils.render import validate_editor
 from weblate.utils.request import get_ip_address, get_user_agent
 from weblate.utils.token import get_token
+from weblate.utils.validators import WeblateURLValidator
 from weblate.wladmin.models import get_support_status
 
 
@@ -170,6 +171,8 @@ ACCOUNT_ACTIVITY = {
     "enabled": gettext_lazy("User was enabled by administrator."),
     "disabled": gettext_lazy("User was disabled by administrator."),
     "donate": gettext_lazy("Semiannual support status review was displayed."),
+    "team-add": gettext_lazy("User was added to the {team} team by {username}."),
+    "team-remove": gettext_lazy("User was removed from the {team} team by {username}."),
 }
 # Override activity messages based on method
 ACCOUNT_ACTIVITY_METHOD = {
@@ -550,6 +553,7 @@ class Profile(models.Model):
     website = models.URLField(
         verbose_name=gettext_lazy("Website URL"),
         blank=True,
+        validators=[WeblateURLValidator()],
     )
     liberapay = models.SlugField(
         verbose_name=gettext_lazy("Liberapay username"),
@@ -567,6 +571,7 @@ class Profile(models.Model):
             "Link to your Fediverse profile for federated services "
             "like Mastodon or diaspora*."
         ),
+        validators=[WeblateURLValidator()],
     )
     codesite = models.URLField(
         verbose_name=gettext_lazy("Code site URL"),
@@ -574,6 +579,7 @@ class Profile(models.Model):
         help_text=gettext_lazy(
             "Link to your code profile for services like Codeberg or GitLab."
         ),
+        validators=[WeblateURLValidator()],
     )
     github = models.SlugField(
         verbose_name=gettext_lazy("GitHub username"),

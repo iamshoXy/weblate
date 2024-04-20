@@ -1,9 +1,30 @@
-Weblate 5.5
------------
+Weblate 5.5.1
+-------------
 
 Not yet released.
 
 **New features**
+
+**Improvements**
+
+**Bug fixes**
+
+**Compatibility**
+
+**Upgrading**
+
+Please follow :ref:`generic-upgrade-instructions` in order to perform update.
+
+`All changes in detail <https://github.com/WeblateOrg/weblate/milestone/117?closed=1>`__.
+
+Weblate 5.5
+-----------
+
+Released on April 20th 2024.
+
+**New features**
+
+* :ref:`addons` can be now installed project-wide and site-wide.
 
 * API improvements
 
@@ -11,6 +32,9 @@ Not yet released.
   * Added :http:get:`/api/projects/(string:project)/file/`.
   * Added :http:post:`/api/groups/(int:id)/admins/`.
   * Added :http:delete:`/api/groups/(int:id)/admins/(int:user_id)`.
+  * Improved :http:post:`/api/translations/(string:project)/(string:component)/(string:language)/units/`.
+
+* Added :ref:`mt-systran` automatic translation support.
 
 **Improvements**
 
@@ -18,18 +42,27 @@ Not yet released.
 * Improved error reporting in :ref:`machine-translation-setup`.
 * :ref:`check-max-size` better displays rendered text.
 * Admins can now specify username and full name when :ref:`invite-user`.
+* Added :ref:`check-end-interrobang`.
 * :ref:`alerts` are now refreshed when needed, not just daily.
+* :doc:`/devel/reporting` uses specific word count for CJK languages.
+* Team membership changes are now tracked in :ref:`audit-log`.
 
 **Bug fixes**
 
+* :ref:`check-check-glossary` works better for languages not using whitespace.
+* :ref:`alerts` better handle non-latin source languages.
 * :ref:`check-max-size` sometimes ignored ``font-spacing:SPACING`` flag.
 * Fixed per-language statistics on nested categories.
 * Fixed categories listing on per-language pages.
+* Fixed :guilabel:`Needs editing` state calculation.
+* Fixed changing :ref:`component-push` with :ref:`vcs-gerrit`.
+* Fixed using categorized components in :ref:`manage`, :ref:`memory` or :ref:`auto-translation`.
 
 **Compatibility**
 
 * Several API calls might be affected by stricter validation of boolean fields by Django REST Framework. For example :http:post:`/api/projects/(string:project)/components/`.
 * Uniqueness of name and slug of a component is now enforced at the database level on PostgreSQL 15+.
+* Docker image now ships Python packages in :file:`/app/venv` and installs using :program:`uv`.
 
 **Upgrading**
 

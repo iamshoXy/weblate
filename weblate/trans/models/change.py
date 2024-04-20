@@ -180,10 +180,16 @@ class ChangeQuerySet(models.QuerySet["Change"]):
         for change in changes:
             post_save.send(change.__class__, instance=change, created=True)
         # Store last content change in cache for improved performance
+        translations = set()
         for change in reversed(changes):
-            if change.is_last_content_change_storable():
+            # Process latest change on each translation (when invoked in
+            # Translation.add_unit, it spans multiple translations)
+            if (
+                change.translation_id not in translations
+                and change.is_last_content_change_storable()
+            ):
                 transaction.on_commit(change.update_cache_last_change)
-                break
+                translations.add(change.translation_id)
         return changes
 
     def filter_components(self, user):
@@ -509,6 +515,7 @@ class Change(models.Model, UserDisplayMixin):
         ACTION_FAILED_PUSH,
         ACTION_LOCK,
         ACTION_UNLOCK,
+        ACTION_HOOK,
     }
 
     # Actions where target is rendered as translation string
@@ -626,11 +633,13 @@ class Change(models.Model, UserDisplayMixin):
             # Update cache for stats so that it does not have to hit
             # the database again
             self.translation.stats.last_change_cache = self
+            # Update currently loaded
             if self.translation.stats.is_loaded:
                 self.translation.stats.fetch_last_change()
-            self.translation.invalidate_cache()
-
+            # Update stats at the end of transaction
             transaction.on_commit(self.update_cache_last_change)
+            # Make sure stats is updated at the end of transaction
+            self.translation.invalidate_cache()
 
     def get_absolute_url(self):
         """Return link either to unit or translation."""
