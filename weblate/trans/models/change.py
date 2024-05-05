@@ -31,6 +31,9 @@ if TYPE_CHECKING:
     from weblate.trans.models import Translation
 
 
+CHANGE_PROJECT_LOOKUP_KEY = "change:project-lookup"
+
+
 class ChangeQuerySet(models.QuerySet["Change"]):
     def content(self, prefetch=False):
         """Return queryset with content changes."""
@@ -205,6 +208,25 @@ class ChangeQuerySet(models.QuerySet["Change"]):
         if not user.needs_project_filter:
             return self
         return self.filter(project__in=user.allowed_projects)
+
+    def lookup_project_rename(self, name: str) -> Project:
+        lookup = cache.get(CHANGE_PROJECT_LOOKUP_KEY)
+        if lookup is None:
+            lookup = self.generate_project_rename_lookup()
+        if name not in lookup:
+            return None
+        try:
+            return Project.objects.get(pk=lookup[name])
+        except Project.DoesNotExist:
+            return None
+
+    def generate_project_rename_lookup(self) -> dict[str, int]:
+        lookup = {}
+        for change in self.filter(action=Change.ACTION_RENAME_PROJECT).order():
+            if change.old not in lookup:
+                lookup[change.old] = change.project_id
+        cache.set(CHANGE_PROJECT_LOOKUP_KEY, lookup, 3600 * 24 * 7)
+        return lookup
 
 
 class ChangeManager(models.Manager["Change"]):
@@ -641,6 +663,9 @@ class Change(models.Model, UserDisplayMixin):
             # Make sure stats is updated at the end of transaction
             self.translation.invalidate_cache()
 
+        if self.action == Change.ACTION_RENAME_PROJECT:
+            Change.objects.generate_project_rename_lookup()
+
     def get_absolute_url(self):
         """Return link either to unit or translation."""
         if self.unit is not None:
@@ -879,6 +904,8 @@ class Change(models.Model, UserDisplayMixin):
 @receiver(post_save, sender=Change)
 @disable_for_loaddata
 def change_notify(sender, instance, created=False, **kwargs) -> None:
+    from weblate.accounts.notifications import is_notificable_action
     from weblate.accounts.tasks import notify_change
 
-    transaction.on_commit(lambda: notify_change.delay(instance.pk))
+    if is_notificable_action(instance.action):
+        transaction.on_commit(lambda: notify_change.delay(instance.pk))

@@ -125,6 +125,10 @@ NEW_LANG_CHOICES = (
 LANGUAGE_CODE_STYLE_CHOICES = (
     ("", gettext_lazy("Default based on the file format")),
     ("posix", gettext_lazy("POSIX style using underscore as a separator")),
+    (
+        "posix_lowercase",
+        gettext_lazy("POSIX style using underscore as a separator, lower cased"),
+    ),
     ("bcp", gettext_lazy("BCP style using hyphen as a separator")),
     (
         "posix_long",
@@ -135,7 +139,7 @@ LANGUAGE_CODE_STYLE_CHOICES = (
     (
         "posix_long_lowercase",
         gettext_lazy(
-            "POSIX style using underscore as a separator, including country code (lowercase)"
+            "POSIX style using underscore as a separator, including country code, lower cased"
         ),
     ),
     (
@@ -151,6 +155,7 @@ LANGUAGE_CODE_STYLE_CHOICES = (
     ("appstore", gettext_lazy("Apple App Store metadata style")),
     ("googleplay", gettext_lazy("Google Play metadata style")),
     ("linux", gettext_lazy("Linux style")),
+    ("linux_lowercase", gettext_lazy("Linux style, lower cased")),
 )
 
 MERGE_CHOICES = (
@@ -201,10 +206,15 @@ def prefetch_tasks(components):
     """Prefetch update tasks."""
     lookup = {component.update_key: component for component in components}
     if lookup:
-        for item, value in cache.get_many(lookup.keys()).items():
+        results_dict = cache.get_many(lookup.keys())
+        results = {
+            value: AsyncResult(value) for value in results_dict.values() if value
+        }
+
+        for item, value in results_dict.items():
             if not value:
                 continue
-            lookup[item].__dict__["background_task"] = AsyncResult(value)
+            lookup[item].__dict__["background_task"] = results[value]
             lookup.pop(item)
         for component in lookup.values():
             component.__dict__["background_task"] = None
@@ -3228,6 +3238,17 @@ class Component(models.Model, PathMixin, CacheKeyMixin, ComponentCategoryMixin):
     @property
     def count_repo_outgoing(self):
         return self._get_count_repo_outgoing()
+
+    @property
+    def count_push_branch_outgoing(self):
+        if not self.push_branch:
+            return 0
+        try:
+            return self.repository.count_outgoing(self.push_branch)
+        except RepositoryError as error:
+            report_error(cause="Could check merge needed", project=self.project)
+            self.add_alert("MergeFailure", error=self.error_text(error))
+            return 0
 
     def needs_commit(self):
         """Check whether there are some not committed changes."""

@@ -31,10 +31,11 @@ from rest_framework.status import (
     HTTP_200_OK,
     HTTP_201_CREATED,
     HTTP_204_NO_CONTENT,
+    HTTP_423_LOCKED,
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
 from rest_framework.utils import formatting
-from rest_framework.views import APIView
+from rest_framework.views import APIView, exception_handler
 from rest_framework.viewsets import ViewSet
 
 from weblate.accounts.models import Subscription
@@ -102,6 +103,7 @@ from weblate.trans.views.files import download_multi
 from weblate.utils.celery import get_queue_stats, get_task_progress, is_task_ready
 from weblate.utils.docs import get_doc_url
 from weblate.utils.errors import report_error
+from weblate.utils.lock import WeblateLockTimeoutError
 from weblate.utils.search import parse_query
 from weblate.utils.state import (
     STATE_APPROVED,
@@ -127,6 +129,20 @@ DOC_TEXT = """
 <p>See <a href="{0}">the Weblate's Web API documentation</a> for detailed
 description of the API.</p>
 """
+
+
+def weblate_exception_handler(exc, context):
+    # Call REST framework's default exception handler first,
+    # to get the standard error response.
+    response = exception_handler(exc, context)
+
+    if response is None and isinstance(exc, WeblateLockTimeoutError):
+        return Response(
+            data={"error": "Could not obtain repository lock to delete the string."},
+            status=HTTP_423_LOCKED,
+        )
+
+    return response
 
 
 def get_view_description(view, html=False):

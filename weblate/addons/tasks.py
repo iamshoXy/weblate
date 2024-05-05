@@ -109,22 +109,27 @@ def language_consistency(
 
 
 @app.task(trail=False)
-def daily_addons() -> None:
-    def daily_callback(addon) -> None:
-        addon.addon.daily(addon.component)
+def daily_addons(modulo: bool = True) -> None:
+    def daily_callback(addon, component) -> None:
+        addon.addon.daily(component)
 
     today = timezone.now()
+    addons = Addon.objects.filter(event__event=AddonEvent.EVENT_DAILY)
+    if modulo:
+        addons = addons.annotate(hourmod=F("id") % 24).filter(hourmod=today.hour)
     handle_addon_event(
         AddonEvent.EVENT_DAILY,
         daily_callback,
-        addon_queryset=Addon.objects.annotate(hourmod=F("component_id") % 24).filter(
-            hourmod=today.hour, event__event=AddonEvent.EVENT_DAILY
-        ),
+        addon_queryset=addons,
         auto_scope=True,
     )
 
 
-@app.task(trail=False)
+@app.task(
+    trail=False,
+    autoretry_for=(WeblateLockTimeoutError,),
+    retry_backoff=60,
+)
 def postconfigure_addon(addon_id: int, addon=None) -> None:
     if addon is None:
         addon = Addon.objects.get(pk=addon_id)

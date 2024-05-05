@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
 
 import sentry_sdk
@@ -35,7 +36,7 @@ from weblate.utils.decorators import disable_for_loaddata
 from weblate.utils.errors import report_error
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Iterable
 
     from weblate.auth.models import User
 
@@ -45,13 +46,15 @@ ADDONS = ClassLoader("WEBLATE_ADDONS", False)
 
 class AddonQuerySet(models.QuerySet):
     def filter_for_execution(self, component):
-        return self.prefetch_related("event_set").filter(
+        query = (
             Q(component=component)
             | Q(project=component.project)
             | (Q(component__linked_component=component) & Q(repo_scope=True))
-            | (Q(component=component.linked_component) & Q(repo_scope=True))
             | (Q(component__isnull=True) & Q(project__isnull=True))
         )
+        if component.linked_component:
+            query |= Q(component=component.linked_component) & Q(repo_scope=True)
+        return self.filter(query).prefetch_related("event_set")
 
     def filter_component(self, component):
         return self.prefetch_related("event_set").filter(component=component)
@@ -96,12 +99,12 @@ class Addon(models.Model):
         original_component = None
         if cls.project_scope:
             original_component = self.component
-            if original_component:
+            if self.component:
                 self.project = self.component.project
             self.component = None
 
         # Reallocate to repository
-        if self.repo_scope and self.component.linked_component:
+        if cls.repo_scope and self.component and self.component.linked_component:
             original_component = self.component
             self.component = self.component.linked_component
 
@@ -129,7 +132,7 @@ class Addon(models.Model):
     def get_absolute_url(self):
         return reverse("addon-detail", kwargs={"pk": self.pk})
 
-    def __init__(self, *args, acting_user: User = None, **kwargs) -> None:
+    def __init__(self, *args, acting_user: User | None = None, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.acting_user = acting_user
 
@@ -177,10 +180,28 @@ class Addon(models.Model):
         return result
 
     def disable(self) -> None:
-        self.component.log_warning(
-            "disabling no longer compatible add-on: %s", self.name
-        )
+        self.log_warning("disabling no longer compatible add-on: %s", self.name)
         self.delete()
+
+    @cached_property
+    def logger(self) -> logging.Logger:
+        return logging.getLogger("weblate.addons")
+
+    def log_warning(self, message: str, *args):
+        if self.project:
+            self.project.log_warning(message, *args)
+        elif self.component:
+            self.component.log_warning(message, *args)
+        else:
+            self.logger.warning(message, *args)
+
+    def log_debug(self, message: str, *args):
+        if self.project:
+            self.project.log_debug(message, *args)
+        elif self.component:
+            self.component.log_debug(message, *args)
+        else:
+            self.logger.debug(message, *args)
 
 
 class Event(models.Model):
@@ -246,7 +267,7 @@ def execute_addon_event(
     with transaction.atomic():
         scope.log_debug("running %s add-on: %s", event.label, addon.name)
         # Skip unsupported components silently
-        if addon.component and not addon.addon.can_install(component, None):
+        if not addon.component and not addon.addon.can_install(component, None):
             scope.log_debug(
                 "Skipping incompatible %s add-on: %s for component: %s",
                 event.label,
@@ -264,7 +285,7 @@ def execute_addon_event(
                     getattr(addon.addon, method)(*args)
                 else:
                     # Callback is used in tasks
-                    method(addon)
+                    method(addon, component)
         except DjangoDatabaseError:
             raise
         except Exception as error:
@@ -272,10 +293,7 @@ def execute_addon_event(
             scope.log_error("failed %s add-on: %s: %s", event.label, addon.name, error)
             report_error(cause=f"add-on {addon.name} failed", project=component.project)
             # Uninstall no longer compatible add-ons
-            if not addon.addon.can_install(scope, None):
-                scope.log_warning(
-                    "uninstalling incompatible %s add-on: %s", event.label, addon.name
-                )
+            if not addon.addon.can_install(component, None):
                 addon.disable()
         else:
             scope.log_debug("completed %s add-on: %s", event.label, addon.name)
@@ -307,6 +325,7 @@ def handle_addon_event(
         if not auto_scope:
             execute_addon_event(addon, component, scope, event, method, args)
         else:
+            components: Iterable[Component]
             if addon.component:
                 components = [addon.component]
             elif addon.project:
@@ -314,8 +333,10 @@ def handle_addon_event(
             else:
                 components = Component.objects.iterator()
 
-            for component in components:
-                execute_addon_event(addon, component, scope, event, method, args)
+            for scope_component in components:
+                execute_addon_event(
+                    addon, scope_component, scope_component, event, method, args
+                )
 
 
 @receiver(vcs_pre_push)
