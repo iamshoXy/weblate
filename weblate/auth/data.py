@@ -178,6 +178,7 @@ ROLES = (
     (pgettext_noop("Access-control role", "Add suggestion"), {"suggestion.add"}),
     (
         pgettext_noop("Access-control role", "Access repository"),
+        {"translation.download", "vcs.access", "vcs.view"},
     ),
     (
         pgettext_noop("Access-control role", "Manage glossary"),
