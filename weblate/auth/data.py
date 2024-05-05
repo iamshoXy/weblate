@@ -162,9 +162,6 @@ TRANSLATE_PERMS = {
     "suggestion.vote",
     "unit.check",
     "unit.edit",
-    "translation.download",
-    "upload.overwrite",
-    "upload.perform",
     "machinery.view",
 }
 
@@ -178,6 +175,8 @@ ROLES = (
         pgettext_noop("Access-control role", "Edit source"),
         TRANSLATE_PERMS | {"unit.template", "source.edit"},
     ),
+    (pgettext_noop("Access-control role", "Leader"), TRANSLATE_PERMS),
+    (pgettext_noop("Access-control role", "Helper"), TRANSLATE_PERMS),
     (pgettext_noop("Access-control role", "Add suggestion"), {"suggestion.add"}),
     (
         pgettext_noop("Access-control role", "Access repository"),
