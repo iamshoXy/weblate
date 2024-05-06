@@ -8,8 +8,11 @@ Not yet released.
 **Improvements**
 
 * Visually highlight explanation in :ref:`glossary`.
+* Add :ref:`addons` history tab in management.
 
 **Bug fixes**
+
+* Improved handling placeables in :ref:`mt-openai`.
 
 **Compatibility**
 
