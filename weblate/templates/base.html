@@ -29,10 +29,8 @@
 
   {% if object.get_url_path %}
     <link rel="alternate" type="application/rss+xml" title="RSS feed" href="{% url 'rss' path=object.get_url_path %}" />
-    <meta property="og:image" content="{{ site_url }}{% url 'widget-image' path=object.get_url_path widget='open' color='graph' extension='png' %}" />
   {% else %}
     <link rel="alternate" type="application/rss+xml" title="RSS feed" href="{% url 'rss' %}" />
-    <meta property="og:image" content="{{ site_url }}{% url 'og-image' %}" />
   {% endif %}
 
   {% for domain in preconnect_list %}
