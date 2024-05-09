@@ -175,7 +175,8 @@ ROLES = (
         pgettext_noop("Access-control role", "Edit source"),
         TRANSLATE_PERMS | {"unit.template", "source.edit"},
     ),
-    (pgettext_noop("Access-control role", "Leader"), TRANSLATE_PERMS),
+    (
+        pgettext_noop("Access-control role", "Leader"), TRANSLATE_PERMS | {"suggestion.delete"} ),
     (pgettext_noop("Access-control role", "Helper"), TRANSLATE_PERMS),
     (pgettext_noop("Access-control role", "Add suggestion"), {"suggestion.add"}),
     (
