@@ -1,20 +1,17 @@
 Weblate 5.5.4
 -------------
 
-Not yet released.
-
-**New features**
+Released on May 9th 2024.
 
 **Improvements**
 
 * Visually highlight explanation in :ref:`glossary`.
 * Add :ref:`addons` history tab in management.
+* New :ref:`alerts` when :ref:`glossary` might not work as expected.
 
 **Bug fixes**
 
 * Improved handling placeables in :ref:`mt-openai`.
-
-**Compatibility**
 
 **Upgrading**
 
