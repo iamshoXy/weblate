@@ -73,6 +73,12 @@ class NotificationTest(ViewTestCase, RegistrationTestMixin):
             "LastAuthorCommentNotificaton",
         )
         for notification in notifications:
+            # Remove any conflicting notifications
+            Subscription.objects.filter(
+                user=self.user,
+                scope=SCOPE_WATCHED,
+                notification=notification,
+            ).delete()
             Subscription.objects.create(
                 user=self.user,
                 scope=SCOPE_WATCHED,
@@ -192,7 +198,7 @@ class NotificationTest(ViewTestCase, RegistrationTestMixin):
 
         # Check mail
         self.validate_notifications(
-            1, "[Weblate] New string to translate in Test/Test — Czech"
+            1, "[Weblate] String to translate in Test/Test — Czech"
         )
 
     def test_notify_new_translation(self) -> None:
@@ -430,6 +436,7 @@ class NotificationTest(ViewTestCase, RegistrationTestMixin):
         notification="ToDoStringsNotification",
         subj="4 unfinished strings in Test/Test",
     ) -> None:
+        self.user.subscription_set.filter(frequency=frequency).delete()
         self.user.subscription_set.create(
             scope=SCOPE_WATCHED, notification=notification, frequency=frequency
         )

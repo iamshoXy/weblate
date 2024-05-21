@@ -28,17 +28,16 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4.1.5
+      uses: actions/checkout@v4.1.6
     - name: Install apt dependencies
       run: sudo ./ci/apt-install
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
         python-version: '3.11'
-        cache: pip
     - name: Used versions
       run: ./ci/print-versions
-    - name: Install pip dependencies
+    - name: Install Python dependencies
       run: ./ci/pip-install
 
     - name: Initialize CodeQL

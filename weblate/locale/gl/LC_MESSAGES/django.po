@@ -7,7 +7,7 @@ msgstr ""
 "Project-Id-Version: Weblate 5.5.4\n"
 "Report-Msgid-Bugs-To: https://github.com/WeblateOrg/weblate/issues\n"
 "POT-Creation-Date: 2024-05-07 11:27+0000\n"
-"PO-Revision-Date: 2024-05-10 23:08+0000\n"
+"PO-Revision-Date: 2024-05-17 04:01+0000\n"
 "Last-Translator: \"Miguel A. Bouzada\" <mbouzada@gmail.com>\n"
 "Language-Team: Galician <https://hosted.weblate.org/projects/weblate/"
 "application/gl/>\n"
@@ -16,7 +16,7 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
-"X-Generator: Weblate 5.5.4\n"
+"X-Generator: Weblate 5.6-dev\n"
 
 #: weblate/accounts/avatar.py:79
 msgctxt "No known user"
@@ -944,7 +944,7 @@ msgstr "Retirar a conta"
 
 #: weblate/accounts/views.py:170 weblate/accounts/views.py:837
 msgid "User registration"
-msgstr "Rexistro de usuario"
+msgstr "Rexistro de usuarios"
 
 #: weblate/accounts/views.py:198
 msgid "Could not send message to administrator."
@@ -1273,7 +1273,7 @@ msgstr "Edición masiva"
 
 #: weblate/addons/flags.py:90
 msgid "Bulk edit flags, labels, or states of strings."
-msgstr "Editar en masa as marcas, etiquetas ou o estado das cadeas."
+msgstr "Editar en masa os marcadores, as etiquetas ou o estado das cadeas."
 
 #: weblate/addons/forms.py:40
 msgid "Path of generated MO file"
@@ -2907,7 +2907,7 @@ msgstr "Orixe e tradución non rematan ámbalas dúas cun punto final"
 
 #: weblate/checks/chars.py:199
 msgid "Mismatched colon"
-msgstr "Os dous puntos non coinciden"
+msgstr "Os dous puntos finais non coinciden"
 
 #: weblate/checks/chars.py:200
 msgid "Source and translation do not both end with a colon"
@@ -4498,7 +4498,7 @@ msgstr "Cantidade de persoas que falan este idioma."
 #: weblate/lang/models.py:676
 msgctxt "Plural type"
 msgid "None"
-msgstr "Ningunha"
+msgstr "Ningún"
 
 #: weblate/lang/models.py:680
 msgctxt "Plural type"
@@ -7469,7 +7469,7 @@ msgstr "desbotada"
 #: weblate/templates/component.html:142
 #, python-format
 msgid "Appeared %(first)s, last seen %(last)s"
-msgstr "Apareceu o %(first)s, a última vista foi o %(last)s"
+msgstr "Apareceu %(first)s, visto por última vez %(last)s"
 
 #: weblate/templates/component.html:146
 #: weblate/templates/manage/performance.html:42
@@ -9660,8 +9660,8 @@ msgid ""
 msgstr ""
 "Weblate é unha ferramenta de tradución baseada na web cunha estreita "
 "integración de control de versións. Presenta unha interface de usuario "
-"sinxela e limpa, propagación de traducións entre compoñentes, controis de "
-"calidade e ligazón automática a ficheiros de orixe."
+"sinxela e limpa, propagación de traducións entre compoñentes, comprobacións "
+"de calidade e ligazón automática a ficheiros de orixe."
 
 #: weblate/templates/snippets/about.html:5
 #, python-format
@@ -10014,7 +10014,7 @@ msgstr "Precisan de edición"
 #: weblate/templates/snippets/info.html:357
 msgctxt "Number of strings"
 msgid "Read-only"
-msgstr "Só de lectura"
+msgstr "De só lectura"
 
 #: weblate/templates/snippets/info.html:366
 msgctxt "Number of strings"
@@ -11052,7 +11052,8 @@ msgstr "As seguintes comprobacións obrigatorias non se usan en ningún lugar:"
 #, python-format
 msgid "%(check)s quality check is enforced, but it is not available."
 msgstr ""
-"É obrigatorio o control de calidade de %(check)s, mais non está dispoñíbel."
+"É obrigatoria a comprobación de calidade de %(check)s, mais non está "
+"dispoñíbel."
 
 #: weblate/templates/trans/alert/unusedenforcedcheck.html:11
 #, python-format
@@ -11060,8 +11061,8 @@ msgid ""
 "%(check)s quality check is enforced, but not turned on using <code>%(flag)s</"
 "code> flag."
 msgstr ""
-"É obrigatorio o control de calidade de %(check)s, mais non está activado "
-"mediante a marca <code>%(flag)s</code>."
+"É obrigatoria a comprobación de calidade de %(check)s, mais non está "
+"activada mediante a marca <code>%(flag)s</code>."
 
 #: weblate/templates/trans/alert/unusedenforcedcheck.html:17
 msgid ""
@@ -12114,7 +12115,7 @@ msgstr "Actualizar o repositorio do SCV (VCS)"
 
 #: weblate/trans/admin.py:52
 msgid "Update quality checks"
-msgstr "Actualizar os controis de calidade"
+msgstr "Actualizar as comprobacións de calidade"
 
 #: weblate/trans/admin.py:83
 msgid "Administrators"
@@ -12146,7 +12147,7 @@ msgstr "Apóstrofos en MessageFormat de Java"
 
 #: weblate/trans/autofixes/whitespace.py:21
 msgid "Trailing and leading whitespace"
-msgstr "Espazo no inicio e no final"
+msgstr "Espazo en branco no inicio e no final"
 
 #: weblate/trans/context_processors.py:132
 msgid "Hosted Weblate, the place to localize your software project."
@@ -12764,7 +12765,7 @@ msgstr "Marcadores de tradución para engadir"
 
 #: weblate/trans/forms.py:2502
 msgid "Translation flags to remove"
-msgstr "Marcadores de tradución para eliminar"
+msgstr "Marcadores de tradución para retirar"
 
 #: weblate/trans/forms.py:2506
 msgid "Labels to add"
@@ -13616,9 +13617,9 @@ msgid ""
 "directory by using {{filename|parentdir}}."
 msgstr ""
 "Ligazón ao navegador do repositorio, empregue {{branch}} para a póla, "
-"{{filename}} e {{line}} como nome de ficheiro e marcadores de posición de "
-"liña. Pode querer eliminar o directorio principal usando {{filename|"
-"parentdir}}."
+"{{filename}} como nome de ficheiro e {{line}} como marcadores de posición de "
+"liña. Pode querer quitar o directorio principal usando "
+"{{filename|parentdir}}."
 
 #: weblate/trans/models/component.py:409
 msgid "Exported repository URL"
@@ -14548,8 +14549,8 @@ msgstr "Hai un ano"
 #, python-format
 msgid "%(count)s year ago"
 msgid_plural "%(count)s years ago"
-msgstr[0] "Hai %(count)s ano"
-msgstr[1] "Hai %(count)s anos"
+msgstr[0] "hai %(count)s ano"
+msgstr[1] "hai %(count)s anos"
 
 #: weblate/trans/templatetags/translations.py:634
 msgid "a month ago"
@@ -14559,15 +14560,15 @@ msgstr "Hai un mes"
 #, python-format
 msgid "%(count)s month ago"
 msgid_plural "%(count)s months ago"
-msgstr[0] "Hai %(count)s mes"
-msgstr[1] "Hai %(count)s meses"
+msgstr[0] "hai %(count)s mes"
+msgstr[1] "hai %(count)s meses"
 
 #: weblate/trans/templatetags/translations.py:640
 #, python-format
 msgid "%(count)s week ago"
 msgid_plural "%(count)s weeks ago"
-msgstr[0] "Hai %(count)s semana"
-msgstr[1] "Hai %(count)s semanas"
+msgstr[0] "hai %(count)s semana"
+msgstr[1] "hai %(count)s semanas"
 
 #: weblate/trans/templatetags/translations.py:645
 msgid "a week ago"
@@ -14581,8 +14582,8 @@ msgstr "Onte"
 #, python-format
 msgid "%(count)s day ago"
 msgid_plural "%(count)s days ago"
-msgstr[0] "Hai %(count)s día"
-msgstr[1] "Hai %(count)s días"
+msgstr[0] "hai %(count)s día"
+msgstr[1] "hai %(count)s días"
 
 #: weblate/trans/templatetags/translations.py:652
 #: weblate/trans/templatetags/translations.py:706
@@ -14597,8 +14598,8 @@ msgstr "Hai un segundo"
 #, python-format
 msgid "%(count)s second ago"
 msgid_plural "%(count)s seconds ago"
-msgstr[0] "Hai %(count)s segundo"
-msgstr[1] "Hai %(count)s segundos"
+msgstr[0] "hai %(count)s segundo"
+msgstr[1] "hai %(count)s segundos"
 
 #: weblate/trans/templatetags/translations.py:662
 msgid "a minute ago"
@@ -14608,8 +14609,8 @@ msgstr "Hai un minuto"
 #, python-format
 msgid "%(count)s minute ago"
 msgid_plural "%(count)s minutes ago"
-msgstr[0] "Hai %(count)s minuto"
-msgstr[1] "Hai %(count)s minutos"
+msgstr[0] "hai %(count)s minuto"
+msgstr[1] "hai %(count)s minutos"
 
 #: weblate/trans/templatetags/translations.py:668
 msgid "an hour ago"
@@ -14619,8 +14620,8 @@ msgstr "Hai unha hora"
 #, python-format
 msgid "%(count)s hour ago"
 msgid_plural "%(count)s hours ago"
-msgstr[0] "Hai %(count)s hora"
-msgstr[1] "Hai %(count)s horas"
+msgstr[0] "hai %(count)s hora"
+msgstr[1] "hai %(count)s horas"
 
 #: weblate/trans/templatetags/translations.py:681
 msgid "a year from now"
@@ -14630,8 +14631,8 @@ msgstr "De hoxe nun ano"
 #, python-format
 msgid "%(count)s year from now"
 msgid_plural "%(count)s years from now"
-msgstr[0] "De hoxe nun ano"
-msgstr[1] "De hoxe en %(count)s anos"
+msgstr[0] "de hoxe nun ano"
+msgstr[1] "de hoxe en %(count)s anos"
 
 #: weblate/trans/templatetags/translations.py:688
 msgid "a month from now"
@@ -14641,15 +14642,15 @@ msgstr "De hoxe nun mes"
 #, python-format
 msgid "%(count)s month from now"
 msgid_plural "%(count)s months from now"
-msgstr[0] "De aquí a %(count)s mes"
-msgstr[1] "De aquí a %(count)s meses"
+msgstr[0] "de aquí a %(count)s mes"
+msgstr[1] "de aquí a %(count)s meses"
 
 #: weblate/trans/templatetags/translations.py:695
 #, python-format
 msgid "%(count)s week from now"
 msgid_plural "%(count)s weeks from now"
-msgstr[0] "De aquí a %(count)s semana"
-msgstr[1] "De aquí a %(count)s semanas"
+msgstr[0] "de aquí a %(count)s semana"
+msgstr[1] "de aquí a %(count)s semanas"
 
 #: weblate/trans/templatetags/translations.py:699
 msgid "tomorrow"
@@ -14663,8 +14664,8 @@ msgstr "De aquí a unha semana"
 #, python-format
 msgid "%(count)s day from now"
 msgid_plural "%(count)s days from now"
-msgstr[0] "De hoxe nun día"
-msgstr[1] "De hoxe en %(count)s días"
+msgstr[0] "de hoxe nun día"
+msgstr[1] "de hoxe en %(count)s días"
 
 #: weblate/trans/templatetags/translations.py:709
 msgid "a second from now"
@@ -14674,8 +14675,8 @@ msgstr "De aquí a un segundo"
 #, python-format
 msgid "%(count)s second from now"
 msgid_plural "%(count)s seconds from now"
-msgstr[0] "De aquí a %(count)s segundo"
-msgstr[1] "De aquí a %(count)s segundos"
+msgstr[0] "de aquí a %(count)s segundo"
+msgstr[1] "de aquí a %(count)s segundos"
 
 #: weblate/trans/templatetags/translations.py:716
 msgid "a minute from now"
@@ -14685,8 +14686,8 @@ msgstr "De aquí a un minuto"
 #, python-format
 msgid "%(count)s minute from now"
 msgid_plural "%(count)s minutes from now"
-msgstr[0] "De aquí a %(count)s minuto"
-msgstr[1] "De aquí a %(count)s minutos"
+msgstr[0] "de aquí a %(count)s minuto"
+msgstr[1] "de aquí a %(count)s minutos"
 
 #: weblate/trans/templatetags/translations.py:722
 msgid "an hour from now"
@@ -14696,8 +14697,8 @@ msgstr "De aquí a unha hora"
 #, python-format
 msgid "%(count)s hour from now"
 msgid_plural "%(count)s hours from now"
-msgstr[0] "De aquí a %(count)s hora"
-msgstr[1] "De aquí a %(count)s horas"
+msgstr[0] "de aquí a %(count)s hora"
+msgstr[1] "de aquí a %(count)s horas"
 
 #: weblate/trans/templatetags/translations.py:854
 msgctxt "String state"

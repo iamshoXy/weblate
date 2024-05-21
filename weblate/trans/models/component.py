@@ -97,7 +97,6 @@ from weblate.utils.site import get_site_url
 from weblate.utils.state import STATE_FUZZY, STATE_READONLY, STATE_TRANSLATED
 from weblate.utils.stats import ComponentStats
 from weblate.utils.validators import (
-    WeblateURLValidator,
     validate_filename,
     validate_re_nonempty,
     validate_slug,
@@ -395,14 +394,15 @@ class Component(models.Model, PathMixin, CacheKeyMixin, ComponentCategoryMixin):
         ),
         blank=True,
     )
-    repoweb = models.URLField(
+    repoweb = models.CharField(
         verbose_name=gettext_lazy("Repository browser"),
+        max_length=200,
         help_text=gettext_lazy(
             "Link to repository browser, use {{branch}} for branch, "
             "{{filename}} and {{line}} as filename and line placeholders. "
             "You might want to strip leading directory by using {{filename|parentdir}}."
         ),
-        validators=[WeblateURLValidator(), validate_repoweb],
+        validators=[validate_repoweb],
         blank=True,
     )
     git_export = models.CharField(
@@ -1719,10 +1719,8 @@ class Component(models.Model, PathMixin, CacheKeyMixin, ComponentCategoryMixin):
             from weblate.trans.tasks import perform_push
 
             self.log_info("scheduling push")
-            transaction.on_commit(
-                lambda: perform_push.delay(
-                    self.pk, None, force_commit=False, do_update=do_update
-                )
+            perform_push.delay_on_commit(
+                self.pk, None, force_commit=False, do_update=do_update
             )
 
     @perform_on_link
@@ -2532,7 +2530,7 @@ class Component(models.Model, PathMixin, CacheKeyMixin, ComponentCategoryMixin):
         if self.needs_cleanup and not self.template:
             from weblate.trans.tasks import cleanup_component
 
-            transaction.on_commit(lambda: cleanup_component.delay(self.id))
+            cleanup_component.delay_on_commit(self.id)
 
         if was_change:
             if self.needs_variants_update:
@@ -2559,9 +2557,7 @@ class Component(models.Model, PathMixin, CacheKeyMixin, ComponentCategoryMixin):
             if settings.CELERY_TASK_ALWAYS_EAGER:
                 batch_update_checks(self.id, batched_checks, component=self)
             else:
-                transaction.on_commit(
-                    lambda: batch_update_checks.delay(self.id, batched_checks)
-                )
+                batch_update_checks.delay_on_commit(self.id, batched_checks)
         self.batch_checks = False
         self.batched_checks = set()
 
@@ -3245,9 +3241,8 @@ class Component(models.Model, PathMixin, CacheKeyMixin, ComponentCategoryMixin):
             return 0
         try:
             return self.repository.count_outgoing(self.push_branch)
-        except RepositoryError as error:
-            report_error(cause="Could check merge needed", project=self.project)
-            self.add_alert("MergeFailure", error=self.error_text(error))
+        except RepositoryError:
+            # We silently ignore this error as push branch might not be existing if not needed
             return 0
 
     def needs_commit(self):
@@ -3695,11 +3690,7 @@ class Component(models.Model, PathMixin, CacheKeyMixin, ComponentCategoryMixin):
 
         update_token = get_random_identifier()
         cache.set(self.update_checks_key, update_token)
-        transaction.on_commit(
-            lambda: update_checks.delay(
-                self.pk, update_token, update_state=update_state
-            )
-        )
+        update_checks.delay_on_commit(self.pk, update_token, update_state=update_state)
 
     @property
     def all_repo_components(self):

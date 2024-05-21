@@ -1,3 +1,40 @@
+Weblate 5.6
+-----------
+
+Not yet released.
+
+**New features**
+
+**Improvements**
+
+* :ref:`subscriptions` now include strings which need updating.
+
+**Bug fixes**
+
+**Compatibility**
+
+**Upgrading**
+
+Please follow :ref:`generic-upgrade-instructions` in order to perform update.
+
+`All changes in detail <https://github.com/WeblateOrg/weblate/milestone/114?closed=1>`__.
+
+Weblate 5.5.5
+-------------
+
+Released on May 13th 2024.
+
+**Bug fixes**
+
+* False-positive merge failure alert when using push branch.
+* Cleanup of stale repositories.
+
+**Upgrading**
+
+Please follow :ref:`generic-upgrade-instructions` in order to perform update.
+
+`All changes in detail <https://github.com/WeblateOrg/weblate/milestone/121?closed=1>`__.
+
 Weblate 5.5.4
 -------------
 
