@@ -242,24 +242,6 @@ class TTKitFormat(TranslationFormat):
     units: list[TranslateToolkitUnit]
     store: TranslationStore
 
-    def __init__(
-        self,
-        storefile,
-        template_store=None,
-        language_code: str | None = None,
-        source_language: str | None = None,
-        is_template: bool = False,
-        existing_units: list[Any] | None = None,
-    ) -> None:
-        super().__init__(
-            storefile,
-            template_store=template_store,
-            language_code=language_code,
-            is_template=is_template,
-            source_language=source_language,
-            existing_units=existing_units,
-        )
-
     @staticmethod
     def serialize(store):
         """Serialize given Translate Toolkit store."""
@@ -329,13 +311,13 @@ class TTKitFormat(TranslationFormat):
 
         return store
 
-    def add_unit(self, ttkit_unit) -> None:
+    def add_unit(self, unit: TranslationUnit) -> None:
         """Add new unit to underlying store."""
         if isinstance(self.store, LISAfile):
             # LISA based stores need to know this
-            self.store.addunit(ttkit_unit, new=True)
+            self.store.addunit(unit.unit, new=True)
         else:
-            self.store.addunit(ttkit_unit)
+            self.store.addunit(unit.unit)
 
     def save_content(self, handle) -> None:
         """Store content to file."""
@@ -377,7 +359,7 @@ class TTKitFormat(TranslationFormat):
         else:
             unit = self.store.UnitClass(source)
         # Needed by some formats (Android) to set target
-        unit._store = self.store
+        unit._store = self.store  # noqa: SLF001
         return unit
 
     def create_unit_key(
@@ -413,6 +395,8 @@ class TTKitFormat(TranslationFormat):
         # Monolingual translation
         if self.is_template or self.template_store:
             unit.setid(key)
+            if isinstance(unit, csvunit):
+                unit.setcontext(key)
             target = source
             source = self.create_unit_key(key, source)
         # Bilingual translation
@@ -491,7 +475,7 @@ class TTKitFormat(TranslationFormat):
         except Exception as exception:
             if errors is not None:
                 errors.append(exception)
-            report_error(cause="File-parsing error")
+            report_error("File-parsing error")
             return False
         return os.path.exists(base)
 
@@ -769,7 +753,7 @@ class XliffUnit(TTKitUnit):
 
         # Use source for monolingual base if target is not set
         if self.unit.target is None:
-            if self.parent.is_template:
+            if self.parent.is_template or isinstance(self.unit, csvunit):
                 return get_string(self.unit.source)
             return ""
 
@@ -1007,7 +991,23 @@ class CSVUnit(MonolingualSimpleUnit):
 
     @cached_property
     def target(self):
-        return self.unescape_csv(super().target)
+        if (
+            not self.parent.is_template
+            and self.template is not None
+            and self.unit is not None
+            and "target" not in self.parent.store.fieldnames
+        ):
+            # Use source if target is not stored
+            target = get_string(self.unit.source)
+        else:
+            target = super().target
+        return self.unescape_csv(target)
+
+    def set_target(self, target: str | list[str]) -> None:
+        super().set_target(target)
+        if self.template is not None and not self.parent.is_template:
+            # Update source for bilingual as CSV fields can contain just source
+            self.unit.source = self.unit.target
 
     def is_fuzzy(self, fallback=False):
         # Report fuzzy state only if present in the fields
@@ -1070,7 +1070,7 @@ class INIUnit(TTKitUnit):
         return False
 
 
-class BasePoFormat(TTKitFormat, BilingualUpdateMixin):
+class BasePoFormat(TTKitFormat):
     loader = pofile
     plural_preference = None
     supports_plural: bool = True
@@ -1125,6 +1125,27 @@ class BasePoFormat(TTKitFormat, BilingualUpdateMixin):
 
         self.store.updateheader(**kwargs)
 
+    def add_unit(self, unit: TranslationUnit) -> None:
+        self.store.require_index()
+        # Check if there is matching obsolete unit
+        old_unit = self.store.id_index.get(unit.unit.getid())
+        if old_unit and old_unit.isobsolete():
+            self.store.removeunit(old_unit)
+        super().add_unit(unit)
+
+
+class PoFormat(BasePoFormat, BilingualUpdateMixin):
+    name = gettext_lazy("gettext PO file")
+    format_id = "po"
+    monolingual = False
+    autoload: tuple[str, ...] = ("*.po", "*.pot")
+    unit_class = PoUnit
+
+    @classmethod
+    def get_new_file_content(cls) -> bytes:
+        """Empty PO file content."""
+        return b""
+
     @classmethod
     def do_bilingual_update(
         cls, in_file: str, out_file: str, template: str, **kwargs
@@ -1155,15 +1176,15 @@ class BasePoFormat(TTKitFormat, BilingualUpdateMixin):
                 text=True,
             )
         except FileNotFoundError as error:
-            report_error(cause="Failed msgmerge")
+            report_error("Failed msgmerge")
             raise UpdateError(
                 "msgmerge not found, please install gettext", error
             ) from error
         except OSError as error:
-            report_error(cause="Failed msgmerge")
+            report_error("Failed msgmerge")
             raise UpdateError(" ".join(cmd), error) from error
         except subprocess.CalledProcessError as error:
-            report_error(cause="Failed msgmerge")
+            report_error("Failed msgmerge")
             raise UpdateError(" ".join(cmd), error.output + error.stderr) from error
         else:
             # The warnings can cause corruption (for example in case
@@ -1178,27 +1199,6 @@ class BasePoFormat(TTKitFormat, BilingualUpdateMixin):
                 errors.append(line)
             if errors:
                 raise UpdateError(" ".join(cmd), "\n".join(errors))
-
-    def add_unit(self, ttkit_unit) -> None:
-        self.store.require_index()
-        # Check if there is matching obsolete unit
-        old_unit = self.store.id_index.get(ttkit_unit.getid())
-        if old_unit and old_unit.isobsolete():
-            self.store.removeunit(old_unit)
-        super().add_unit(ttkit_unit)
-
-
-class PoFormat(BasePoFormat):
-    name = gettext_lazy("gettext PO file")
-    format_id = "po"
-    monolingual = False
-    autoload: tuple[str, ...] = ("*.po", "*.pot")
-    unit_class = PoUnit
-
-    @classmethod
-    def get_new_file_content(cls) -> bytes:
-        """Empty PO file content."""
-        return b""
 
 
 class PoMonoFormat(BasePoFormat):
@@ -1451,7 +1451,9 @@ class DictStoreFormat(TTKitFormat):
         try:
             id_class.from_string(context)
         except Exception as error:
-            raise ValidationError(gettext("Could not parse the key: %s") % error)
+            raise ValidationError(
+                gettext("Could not parse the key: %s") % error
+            ) from error
 
 
 class JSONFormat(DictStoreFormat):
@@ -1512,6 +1514,7 @@ class GoI18JSONFormat(JSONFormat):
     format_id = "go-i18n-json"
     loader = ("jsonl10n", "GoI18NJsonFile")
     autoload: tuple[str, ...] = ()
+    new_translation = "[]\n"
     supports_plural: bool = True
 
 
@@ -1604,13 +1607,17 @@ class CSVFormat(TTKitFormat):
                 content = handle.read()
         return content, filename
 
-    def parse_store(self, storefile):
+    def parse_store(self, storefile, *, dialect: None | str = None):
         """Parse the store."""
         content, filename = self.get_content_and_filename(storefile)
 
         # Parse file
         store = self.get_store_instance()
-        store.parse(content, sample_length=40000)
+        store.parse(
+            content,
+            sample_length=40000 if dialect is None else None,
+            dialect=dialect,
+        )
         # Did detection of headers work?
         if store.fieldnames != ["location", "source", "target"]:
             return store
@@ -1624,14 +1631,22 @@ class CSVFormat(TTKitFormat):
         header = next(reader)
         fileobj.close()
 
-        # Check if the file is not two column only
+        # Check if the file is not two column only, in that case translate-toolkit detection
+        # wrongly assumes three column files
         if len(header) != 2:
             return store
 
-        return self.parse_simple_csv(content, filename)
+        return self.parse_simple_csv(content, filename, header=header)
 
-    def parse_simple_csv(self, content, filename):
-        result = self.get_store_instance(fieldnames=["source", "target"])
+    def parse_simple_csv(self, content, filename, header: None | list[str] = None):
+        fieldnames = ["source", "target"]
+        if header and all(
+            field in {"source", "target", "context", "id"} for field in header
+        ):
+            fieldnames = header
+        elif self.is_template or self.template_store:
+            fieldnames = ["context", "target"]
+        result = self.get_store_instance(fieldnames=fieldnames)
         result.parse(content, sample_length=None)
         result.filename = filename
         return result
@@ -1900,7 +1915,7 @@ class XWikiPropertiesFormat(PropertiesBaseFormat):
     name = "XWiki Java Properties"
     format_id = "xwiki-java-properties"
     loader = ("properties", "xwikifile")
-    language_format = "bcp_legacy"
+    language_format = "linux"
     autoload: tuple[str, ...] = ("*.properties",)
     new_translation = "\n"
     can_add_unit: bool = False
@@ -1940,7 +1955,7 @@ class XWikiPropertiesFormat(PropertiesBaseFormat):
             # to avoid any change.
             elif not unit.has_content():
                 unit.unit = unit.mainunit
-            self.add_unit(unit.unit)
+            self.add_unit(unit)
 
         self.store.serialize(handle)
 

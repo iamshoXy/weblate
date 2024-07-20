@@ -7,6 +7,7 @@ from __future__ import annotations
 import logging
 import sys
 from json import JSONDecodeError
+from typing import Literal
 
 import sentry_sdk
 from django.conf import settings
@@ -30,9 +31,11 @@ except ImportError:
 
 
 def report_error(
-    level: str = "warning",
     cause: str = "Handled exception",
     *,
+    level: Literal[
+        "fatal", "critical", "error", "warning", "info", "debug"
+    ] = "warning",
     skip_sentry: bool = False,
     print_tb: bool = False,
     extra_log: str | None = None,
@@ -54,7 +57,7 @@ def report_error(
         if project is not None:
             sentry_sdk.set_tag("project", project.slug)
         sentry_sdk.set_tag("user.locale", get_language())
-        sentry_sdk.level = level
+        sentry_sdk.set_level(level)
         if message:
             sentry_sdk.capture_message(cause)
         else:
@@ -99,7 +102,7 @@ def init_error_collection(celery=False) -> None:
         sentry_sdk.init(
             dsn=settings.SENTRY_DSN,
             integrations=[
-                CeleryIntegration(),
+                CeleryIntegration(monitor_beat_tasks=True),
                 DjangoIntegration(),
                 RedisIntegration(),
             ],
@@ -121,8 +124,8 @@ def init_error_collection(celery=False) -> None:
             _experiments={"max_spans": 2000},
             **settings.SENTRY_EXTRA_ARGS,
         )
-        # Ignore Weblate logging, those are reported using capture_exception
-        ignore_logger(ERROR_LOGGER)
+        # Ignore Weblate logging, those should trigger proper errors
+        ignore_logger("weblate")
 
     if celery and HAS_ROLLBAR and hasattr(settings, "ROLLBAR"):
         rollbar.init(**settings.ROLLBAR)

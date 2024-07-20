@@ -5,19 +5,18 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, overload
 
 import sentry_sdk
 from appconf import AppConf
 from django.db import Error as DjangoDatabaseError
 from django.db import models, transaction
-from django.db.models import Q
+from django.db.models import Q, QuerySet
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.urls import reverse
 from django.utils.functional import cached_property
 
-from weblate.addons.events import AddonEvent
 from weblate.trans.models import Alert, Change, Component, Project, Translation, Unit
 from weblate.trans.signals import (
     component_post_update,
@@ -35,13 +34,16 @@ from weblate.utils.classloader import ClassLoader
 from weblate.utils.decorators import disable_for_loaddata
 from weblate.utils.errors import report_error
 
+from .base import BaseAddon
+from .events import AddonEvent
+
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable
 
     from weblate.auth.models import User
 
 # Initialize addons registry
-ADDONS = ClassLoader("WEBLATE_ADDONS", False)
+ADDONS = ClassLoader("WEBLATE_ADDONS", construct=False, base_class=BaseAddon)
 
 
 class AddonQuerySet(models.QuerySet):
@@ -136,7 +138,7 @@ class Addon(models.Model):
         super().__init__(*args, **kwargs)
         self.acting_user = acting_user
 
-    def store_change(self, action):
+    def store_change(self, action) -> None:
         Change.objects.create(
             action=action,
             user=self.acting_user,
@@ -187,7 +189,7 @@ class Addon(models.Model):
     def logger(self) -> logging.Logger:
         return logging.getLogger("weblate.addons")
 
-    def log_warning(self, message: str, *args):
+    def log_warning(self, message: str, *args) -> None:
         if self.project:
             self.project.log_warning(message, *args)
         elif self.component:
@@ -195,13 +197,17 @@ class Addon(models.Model):
         else:
             self.logger.warning(message, *args)
 
-    def log_debug(self, message: str, *args):
+    def log_debug(self, message: str, *args) -> None:
         if self.project:
             self.project.log_debug(message, *args)
         elif self.component:
             self.component.log_debug(message, *args)
         else:
             self.logger.debug(message, *args)
+
+    def get_addon_activity_logs(self) -> QuerySet[AddonActivityLog]:
+        """Return activity logs for add-on."""
+        return self.addonactivitylog_set.order_by("-created")
 
 
 class Event(models.Model):
@@ -252,6 +258,9 @@ class AddonsConf(AppConf):
     LOCALIZE_CDN_URL = None
     LOCALIZE_CDN_PATH = None
 
+    # How long to keep add-on activity log entries
+    ADDON_ACTIVITY_LOG_EXPIRY = 180
+
     class Meta:
         prefix = ""
 
@@ -263,7 +272,18 @@ def execute_addon_event(
     event: AddonEvent,
     method: str | Callable,
     args: tuple | None = None,
-):
+) -> None:
+    # Log logging result and error flag for add-on activity log
+    log_result = None
+    error_occurred = False
+
+    # Events to exclude from logging
+    exclude_from_logging = {
+        AddonEvent.EVENT_UNIT_PRE_CREATE,
+        AddonEvent.EVENT_UNIT_POST_SAVE,
+        AddonEvent.EVENT_STORE_POST_LOAD,
+    }
+
     with transaction.atomic():
         scope.log_debug("running %s add-on: %s", event.label, addon.name)
         # Skip unsupported components silently
@@ -282,32 +302,82 @@ def execute_addon_event(
                 op=f"addon.{event.name}", description=addon.name
             ):
                 if isinstance(method, str):
-                    getattr(addon.addon, method)(*args)
+                    log_result = getattr(addon.addon, method)(*args)
                 else:
                     # Callback is used in tasks
-                    method(addon, component)
+                    log_result = method(addon, component)
         except DjangoDatabaseError:
             raise
         except Exception as error:
             # Log failure
+            error_occurred = True
+            log_result = str(error)
             scope.log_error("failed %s add-on: %s: %s", event.label, addon.name, error)
-            report_error(cause=f"add-on {addon.name} failed", project=component.project)
+            report_error(f"add-on {addon.name} failed", project=component.project)
             # Uninstall no longer compatible add-ons
             if not addon.addon.can_install(component, None):
                 addon.disable()
         else:
             scope.log_debug("completed %s add-on: %s", event.label, addon.name)
+        finally:
+            # Check if add-on is still installed and log activity
+            if event not in exclude_from_logging and addon.pk is not None:
+                AddonActivityLog.objects.create(
+                    addon=addon,
+                    component=component,
+                    event=event,
+                    details={"result": log_result, "error": error_occurred},
+                )
+
+
+@overload
+def handle_addon_event(
+    event: AddonEvent,
+    method: str,
+    args: tuple,
+    *,
+    component: Component,
+    translation: None = None,
+    addon_queryset: AddonQuerySet | None = None,
+    auto_scope: bool = False,
+) -> None: ...
+
+
+@overload
+def handle_addon_event(
+    event: AddonEvent,
+    method: str,
+    args: tuple,
+    *,
+    component: None = None,
+    translation: Translation,
+    addon_queryset: AddonQuerySet | None = None,
+    auto_scope: bool = False,
+) -> None: ...
+
+
+@overload
+def handle_addon_event(
+    event: AddonEvent,
+    method: Callable,
+    args: None = None,
+    *,
+    component: None = None,
+    translation: None = None,
+    addon_queryset: AddonQuerySet | None,
+    auto_scope: bool,
+) -> None: ...
 
 
 def handle_addon_event(
-    event: AddonEvent,
-    method: str | Callable,
-    args: tuple | None = None,
+    event,
+    method,
+    args=None,
     *,
-    component: Component | None = None,
-    translation: Translation | None = None,
-    addon_queryset: AddonQuerySet | None = None,
-    auto_scope: bool = False,
+    component=None,
+    translation=None,
+    addon_queryset=None,
+    auto_scope=False,
 ) -> None:
     # Scope is used for logging
     scope = translation or component
@@ -316,13 +386,16 @@ def handle_addon_event(
     if component is None and translation is not None:
         component = translation.component
 
+    if component is None and not auto_scope:
+        raise ValueError("Missing event scope!")
+
     # EVENT_DAILY uses custom queryset because it is not triggered from the
     # object scope
     if addon_queryset is None:
         addon_queryset = Addon.objects.filter_event(component, event)
 
     for addon in addon_queryset:
-        if not auto_scope:
+        if scope is not None:
             execute_addon_event(addon, component, scope, event, method, args)
         else:
             components: Iterable[Component]
@@ -340,7 +413,7 @@ def handle_addon_event(
 
 
 @receiver(vcs_pre_push)
-def pre_push(sender, component, **kwargs) -> None:
+def pre_push(sender, component: Component, **kwargs) -> None:
     handle_addon_event(
         AddonEvent.EVENT_PRE_PUSH,
         "pre_push",
@@ -350,7 +423,7 @@ def pre_push(sender, component, **kwargs) -> None:
 
 
 @receiver(vcs_post_push)
-def post_push(sender, component, **kwargs) -> None:
+def post_push(sender, component: Component, **kwargs) -> None:
     handle_addon_event(
         AddonEvent.EVENT_POST_PUSH,
         "post_push",
@@ -362,7 +435,7 @@ def post_push(sender, component, **kwargs) -> None:
 @receiver(vcs_post_update)
 def post_update(
     sender,
-    component,
+    component: Component,
     previous_head: str,
     child: bool = False,
     skip_push: bool = False,
@@ -377,7 +450,7 @@ def post_update(
 
 
 @receiver(component_post_update)
-def component_update(sender, component, **kwargs) -> None:
+def component_update(sender, component: Component, **kwargs) -> None:
     handle_addon_event(
         AddonEvent.EVENT_COMPONENT_UPDATE,
         "component_update",
@@ -387,7 +460,7 @@ def component_update(sender, component, **kwargs) -> None:
 
 
 @receiver(vcs_pre_update)
-def pre_update(sender, component, **kwargs) -> None:
+def pre_update(sender, component: Component, **kwargs) -> None:
     handle_addon_event(
         AddonEvent.EVENT_PRE_UPDATE,
         "pre_update",
@@ -397,7 +470,7 @@ def pre_update(sender, component, **kwargs) -> None:
 
 
 @receiver(vcs_pre_commit)
-def pre_commit(sender, translation, author, **kwargs) -> None:
+def pre_commit(sender, translation: Translation, author, **kwargs) -> None:
     handle_addon_event(
         AddonEvent.EVENT_PRE_COMMIT,
         "pre_commit",
@@ -407,7 +480,7 @@ def pre_commit(sender, translation, author, **kwargs) -> None:
 
 
 @receiver(vcs_post_commit)
-def post_commit(sender, component, **kwargs) -> None:
+def post_commit(sender, component: Component, **kwargs) -> None:
     handle_addon_event(
         AddonEvent.EVENT_POST_COMMIT,
         "post_commit",
@@ -417,7 +490,7 @@ def post_commit(sender, component, **kwargs) -> None:
 
 
 @receiver(translation_post_add)
-def post_add(sender, translation, **kwargs) -> None:
+def post_add(sender, translation: Translation, **kwargs) -> None:
     handle_addon_event(
         AddonEvent.EVENT_POST_ADD,
         "post_add",
@@ -427,7 +500,7 @@ def post_add(sender, translation, **kwargs) -> None:
 
 
 @receiver(unit_pre_create)
-def unit_pre_create_handler(sender, unit, **kwargs) -> None:
+def unit_pre_create_handler(sender, unit: Unit, **kwargs) -> None:
     handle_addon_event(
         AddonEvent.EVENT_UNIT_PRE_CREATE,
         "unit_pre_create",
@@ -438,7 +511,7 @@ def unit_pre_create_handler(sender, unit, **kwargs) -> None:
 
 @receiver(post_save, sender=Unit)
 @disable_for_loaddata
-def unit_post_save_handler(sender, instance, created, **kwargs) -> None:
+def unit_post_save_handler(sender, instance: Unit, created, **kwargs) -> None:
     handle_addon_event(
         AddonEvent.EVENT_UNIT_POST_SAVE,
         "unit_post_save",
@@ -448,10 +521,26 @@ def unit_post_save_handler(sender, instance, created, **kwargs) -> None:
 
 
 @receiver(store_post_load)
-def store_post_load_handler(sender, translation, store, **kwargs) -> None:
+def store_post_load_handler(sender, translation: Translation, store, **kwargs) -> None:
     handle_addon_event(
         AddonEvent.EVENT_STORE_POST_LOAD,
         "store_post_load",
         (translation, store),
         translation=translation,
     )
+
+
+class AddonActivityLog(models.Model):
+    addon = models.ForeignKey(Addon, on_delete=models.deletion.CASCADE)
+    component = models.ForeignKey(Component, on_delete=models.deletion.CASCADE)
+    event = models.IntegerField(choices=AddonEvent.choices)
+    created = models.DateTimeField(auto_now_add=True)
+    details = models.JSONField(default=dict)
+
+    class Meta:
+        verbose_name = "add-on activity log"
+        verbose_name_plural = "add-on activity logs"
+        ordering = ["-created"]
+
+    def __str__(self) -> str:
+        return f"{self.addon}: {self.get_event_display()} at {self.created}"

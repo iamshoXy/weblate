@@ -305,9 +305,10 @@ The following subdirectories usually exist:
 .. setting:: CSP_CONNECT_SRC
 .. setting:: CSP_STYLE_SRC
 .. setting:: CSP_FONT_SRC
+.. setting:: CSP_FORM_SRC
 
-CSP_SCRIPT_SRC, CSP_IMG_SRC, CSP_CONNECT_SRC, CSP_STYLE_SRC, CSP_FONT_SRC
--------------------------------------------------------------------------
+CSP_SCRIPT_SRC, CSP_IMG_SRC, CSP_CONNECT_SRC, CSP_STYLE_SRC, CSP_FONT_SRC, CSP_FORM_SRC
+---------------------------------------------------------------------------------------
 
 Customize :http:header:`Content-Security-Policy` header for Weblate. The header is
 automatically generated based on enabled integrations with third-party services
@@ -1658,7 +1659,11 @@ Configure sampling rate for performance monitoring. Set to 1 to trace all events
 SENTRY_SEND_PII
 ---------------
 
-Allow Sentry to collect certain personally identifiable information. Turned on by default.
+Allow Sentry to collect certain personally identifiable information. Turned off by default.
+
+.. versionchanged:: 5.7
+
+   This is turned off by default now, used to be turned on by default.
 
 .. setting:: SENTRY_TRACES_SAMPLE_RATE
 
@@ -1669,7 +1674,7 @@ Configure sampling rate for profiling monitoring. Set to 1 to trace all events, 
 
 .. seealso::
 
-   `Sentry Profiling <https://docs.sentry.io/product/profiling/>`_
+   `Sentry Profiling <https://docs.sentry.io/product/explore/profiling/>`_
 
 .. setting:: SESSION_COOKIE_AGE_AUTHENTICATED
 
@@ -2002,7 +2007,17 @@ example:
 .. seealso::
 
     :ref:`addons`,
-    :setting:`DEFAULT_ADDONS`
+    :setting:`DEFAULT_ADDONS`,
+    :setting:`ADDON_ACTIVITY_LOG_EXPIRY`
+
+.. setting:: ADDON_ACTIVITY_LOG_EXPIRY
+
+ADDON_ACTIVITY_LOG_EXPIRY
+-------------------------
+
+.. versionadded:: 5.6
+
+Configures how long activity logs for add-ons are kept. Defaults to 180 days.
 
 .. setting:: WEBLATE_EXPORTERS
 

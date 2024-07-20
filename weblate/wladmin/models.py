@@ -187,7 +187,7 @@ class SupportStatus(models.Model):
         ssh_key = ensure_ssh_key()
         if ssh_key:
             data["ssh_key"] = ssh_key["key"]
-        response = request("post", settings.SUPPORT_API_URL, data=data)
+        response = request("post", settings.SUPPORT_API_URL, data=data, timeout=360)
         response.raise_for_status()
         payload = response.json()
         self.name = payload["name"]
@@ -318,8 +318,8 @@ class BackupLog(models.Model):
 
 
 def get_support_status(request: HttpRequest) -> SupportStatus:
-    if hasattr(request, "_weblate_support_status"):
-        support_status = request._weblate_support_status
+    if hasattr(request, "weblate_support_status"):
+        support_status = request.weblate_support_status
     else:
         support_status = cache.get(SUPPORT_STATUS_CACHE_KEY)
         if support_status is None:
@@ -329,5 +329,5 @@ def get_support_status(request: HttpRequest) -> SupportStatus:
                 "in_limits": support_status_instance.in_limits,
             }
             cache.set(SUPPORT_STATUS_CACHE_KEY, support_status, 86400)
-        request._weblate_support_status = support_status
+        request.weblate_support_status = support_status
     return support_status

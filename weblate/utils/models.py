@@ -46,8 +46,11 @@ class WeblateConf(AppConf):
     SENTRY_SECURITY = None
     SENTRY_ENVIRONMENT = "devel"
     SENTRY_TOKEN = None
-    SENTRY_SEND_PII = True
+    SENTRY_SEND_PII = False
     SENTRY_PROJECTS = ["weblate"]
+    SENTRY_RELEASES_API_URL = (
+        "https://sentry.io/api/0/organizations/4507304895905792/releases/"
+    )
     SENTRY_EXTRA_ARGS = {}
     SENTRY_TRACES_SAMPLE_RATE = 0
     SENTRY_PROFILES_SAMPLE_RATE = 0
@@ -68,6 +71,7 @@ class WeblateConf(AppConf):
     CSP_CONNECT_SRC = []
     CSP_STYLE_SRC = []
     CSP_FONT_SRC = []
+    CSP_FORM_SRC = []
 
     INTERLEDGER_PAYMENT_POINTERS = ["$ilp.uphold.com/ENU7fREdeZi9"]
 

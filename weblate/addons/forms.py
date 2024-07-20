@@ -17,7 +17,7 @@ from weblate.trans.discovery import ComponentDiscovery
 from weblate.trans.forms import AutoForm, BulkEditForm
 from weblate.trans.models import Translation
 from weblate.utils.forms import CachedModelChoiceField, ContextDiv
-from weblate.utils.render import validate_render, validate_render_component
+from weblate.utils.render import validate_render, validate_render_translation
 from weblate.utils.validators import validate_filename, validate_re
 
 
@@ -64,7 +64,7 @@ class GenerateMoForm(BaseAddonForm):
         )
 
     def test_render(self, value) -> None:
-        validate_render_component(value, translation=True)
+        validate_render_translation(value)
 
     def clean_path(self):
         self.test_render(self.cleaned_data["path"])
@@ -94,7 +94,7 @@ class GenerateForm(BaseAddonForm):
         )
 
     def test_render(self, value) -> None:
-        validate_render_component(value, translation=True)
+        validate_render_translation(value)
 
     def clean_filename(self):
         self.test_render(self.cleaned_data["filename"])
@@ -539,7 +539,7 @@ class CDNJSForm(BaseAddonForm):
         except Exception as error:
             raise forms.ValidationError(
                 gettext("Could not parse CSS selector: %s") % error
-            )
+            ) from error
         return self.cleaned_data["css_selector"]
 
 
@@ -630,3 +630,11 @@ class PseudolocaleAddonForm(BaseAddonForm):
         result["source"] = result["source"].pk
         result["target"] = result["target"].pk
         return result
+
+
+class PropertiesSortAddonForm(BaseAddonForm):
+    case_sensitive = forms.BooleanField(
+        label=gettext_lazy("Enable case-sensitive key sorting"),
+        required=False,
+        initial=False,
+    )

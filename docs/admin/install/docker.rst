@@ -390,7 +390,7 @@ volume should be separate for each container.
 
 Each Weblate container has defined role using :envvar:`WEBLATE_SERVICE`
 environment variable. Please follow carefully the documentation as some of the
-services should be running just once in the cluster and the ordering of the
+services should be running just once in the cluster, and the order of the
 services matters as well.
 
 You can find example setup in the ``docker-compose`` repo as
@@ -820,6 +820,7 @@ Generic settings
 .. envvar:: WEBLATE_CSP_CONNECT_SRC
 .. envvar:: WEBLATE_CSP_STYLE_SRC
 .. envvar:: WEBLATE_CSP_FONT_SRC
+.. envvar:: WEBLATE_CSP_FORM_SRC
 
     Allows to customize ``Content-Security-Policy`` HTTP header.
 
@@ -831,6 +832,7 @@ Generic settings
         :setting:`CSP_CONNECT_SRC`,
         :setting:`CSP_STYLE_SRC`,
         :setting:`CSP_FONT_SRC`
+        :setting:`CSP_FORM_SRC`
 
 .. envvar:: WEBLATE_LICENSE_FILTER
 
@@ -972,7 +974,7 @@ Generic settings
 
    .. versionadded:: 4.16
 
-   Allow CORS requests from given origins.
+   Allow CORS requests to API from given origins.
 
    **Example:**
 
@@ -980,6 +982,12 @@ Generic settings
 
         environment:
           WEBLATE_CORS_ALLOWED_ORIGINS: https://example.com,https://weblate.org
+
+.. envvar:: WEBLATE_CORS_ALLOW_ALL_ORIGINS
+
+   .. versionadded:: 5.6.1
+
+      Allows CORS requests to API from all origins.
 
 
 .. envvar:: CLIENT_MAX_BODY_SIZE
@@ -1679,7 +1687,7 @@ To enable support for Sentry, set following:
 
 .. envvar:: SENTRY_TRACES_SAMPLE_RATE
 
-   Configure sampling rate for performance monitoring. Set to 1 to trace all events, 0 (the default) disables tracing.
+   Configures :setting:`SENTRY_TRACES_SAMPLE_RATE`.
 
    **Example:**
 
@@ -1688,13 +1696,9 @@ To enable support for Sentry, set following:
        environment:
          SENTRY_TRACES_SAMPLE_RATE: 0.5
 
-   .. seealso::
-
-      `Sentry Performance Monitoring <https://docs.sentry.io/product/performance/>`_,
-
 .. envvar:: SENTRY_PROFILES_SAMPLE_RATE
 
-   Configure sampling rate for profiling monitoring. Set to 1 to trace all events, 0 (the default) disables tracing.
+   Configures :setting:`SENTRY_PROFILES_SAMPLE_RATE`.
 
    **Example:**
 
@@ -1702,10 +1706,6 @@ To enable support for Sentry, set following:
 
        environment:
          SENTRY_PROFILES_SAMPLE_RATE: 0.5
-
-   .. seealso::
-
-      `Sentry Profiling <https://docs.sentry.io/product/profiling/>`_
 
 .. envvar:: SENTRY_SEND_PII
 
@@ -1744,8 +1744,8 @@ Localization CDN
         :setting:`LOCALIZE_CDN_PATH`
 
 
-Changing enabled apps, checks, add-ons or autofixes
-+++++++++++++++++++++++++++++++++++++++++++++++++++
+Changing enabled apps, checks, add-ons, machine translation or autofixes
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 The built-in configuration of enabled checks, add-ons or autofixes can be
 adjusted by the following variables:
@@ -1758,6 +1758,13 @@ adjusted by the following variables:
 .. envvar:: WEBLATE_REMOVE_AUTOFIX
 .. envvar:: WEBLATE_ADD_ADDONS
 .. envvar:: WEBLATE_REMOVE_ADDONS
+.. envvar:: WEBLATE_ADD_MACHINERY
+
+   .. versionadded:: 5.6.1
+
+.. envvar:: WEBLATE_REMOVE_MACHINERY
+
+   .. versionadded:: 5.6.1
 
 **Example:**
 
@@ -1773,6 +1780,7 @@ adjusted by the following variables:
    :setting:`AUTOFIX_LIST`,
    :setting:`WEBLATE_ADDONS`,
    :setting:`django:INSTALLED_APPS`
+   :setting:`WEBLATE_MACHINERY`
 
 Container settings
 ++++++++++++++++++
@@ -1858,20 +1866,20 @@ Container settings
 Docker container volumes
 ------------------------
 
-There are two volumes (data and cache) exported by the Weblate container. The
+There are two volumes (``data`` and ``cache``) exported by the Weblate container. The
 other service containers (PostgreSQL or Redis) have their data volumes as well,
 but those are not covered by this document.
 
-The data volume is used to store Weblate persistent data such as cloned
-repositories or to customize Weblate installation.
+The ``data`` volume is mounted as :file:`/app/data` and is used to store
+Weblate persistent data such as cloned repositories or to customize Weblate
+installation. :setting:`DATA_DIR` describes in more detail what is stored here.
 
 The placement of the Docker volume on host system depends on your Docker
 configuration, but usually it is stored in
 :file:`/var/lib/docker/volumes/weblate-docker_weblate-data/_data/` (the path
 consist of name of your docker-compose directory, container, and volume names).
-In the container it is mounted as :file:`/app/data`.
 
-The cache volume is mounted as :file:`/app/cache` and is used to store static
+The ``cache`` volume is mounted as :file:`/app/cache` and is used to store static
 files and :setting:`CACHE_DIR`. Its content is recreated on container startup
 and the volume can be mounted using ephemeral filesystem such as `tmpfs`.
 
@@ -1880,7 +1888,9 @@ as that is user used inside the container.
 
 .. seealso::
 
-   `Docker volumes documentation <https://docs.docker.com/storage/volumes/>`_
+   `Docker volumes documentation <https://docs.docker.com/storage/volumes/>`_,
+   :setting:`DATA_DIR`,
+   :setting:`CACHE_DIR`
 
 Read-only root filesystem
 +++++++++++++++++++++++++

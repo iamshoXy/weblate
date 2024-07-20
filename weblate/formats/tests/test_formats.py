@@ -10,6 +10,7 @@ from __future__ import annotations
 import os.path
 import shutil
 from io import BytesIO
+from pathlib import Path
 from typing import NoReturn
 from unittest import SkipTest, TestCase
 
@@ -56,7 +57,7 @@ from weblate.lang.data import PLURAL_UNKNOWN
 from weblate.lang.models import Language, Plural
 from weblate.trans.tests.test_views import FixtureTestCase
 from weblate.trans.tests.utils import TempDirMixin, get_test_file
-from weblate.utils.state import STATE_FUZZY, STATE_TRANSLATED
+from weblate.utils.state import STATE_APPROVED, STATE_FUZZY, STATE_TRANSLATED
 
 TEST_PO = get_test_file("cs.po")
 TEST_CSV = get_test_file("cs-mono.csv")
@@ -196,11 +197,13 @@ class BaseFormatTest(FixtureTestCase, TempDirMixin):
         super().tearDown()
         self.remove_temp()
 
-    def parse_file(self, filename):
+    def parse_file(self, filename: str, template: str | None = None):
         if self.MONOLINGUAL:
             return self.FORMAT(
                 filename,
-                template_store=self.FORMAT(self.TEMPLATE or filename, is_template=True),
+                template_store=self.FORMAT(
+                    template or self.TEMPLATE or filename, is_template=True
+                ),
             )
         return self.FORMAT(filename)
 
@@ -274,6 +277,7 @@ class BaseFormatTest(FixtureTestCase, TempDirMixin):
         self.assertTrue(self.FORMAT.is_valid_base_for_new(self.BASE, True))
         out = os.path.join(self.tempdir, f"test.{self.EXT}")
         self.FORMAT.add_language(out, Language.objects.get(code="cs"), self.BASE)
+        self.parse_file(out)  # check the parser agrees that the new file is valid.
         if self.MATCH is None:
             self.assertTrue(os.path.isdir(out))
         else:
@@ -305,10 +309,13 @@ class BaseFormatTest(FixtureTestCase, TempDirMixin):
             handle.write(testdata)
 
         # Parse test file
-        storage = self.parse_file(testfile)
+        storage = self.parse_file(testfile, template=testfile)
+        if self.MONOLINGUAL:
+            # Add to template for monolingual (it is the same file, just different object)
+            storage = storage.template_store
 
         # Add new unit
-        storage.new_unit(self.NEW_UNIT_KEY, "Source string", skip_build=True)
+        storage.new_unit(self.NEW_UNIT_KEY, "Source string")
         storage.save()
 
         # Read new content
@@ -336,6 +343,54 @@ class BaseFormatTest(FixtureTestCase, TempDirMixin):
         for i, expected_flag in enumerate(expected_list):
             unit = units[i]
             self.assertEqual(unit.flags, expected_flag)
+
+    def test_add_monolingual(self) -> None:
+        """
+        Test for adding monolingual based on the template.
+
+        This is used when Weblate is translating string not present in the translation
+        in Translation.update_units().
+        """
+        if not self.MONOLINGUAL or not self.FORMAT.can_add_unit:
+            raise SkipTest("Not supported")
+
+        temp_dir = Path(self.tempdir)
+        template_file = temp_dir / f"test.tmpl.{self.EXT}"
+        main_file = temp_dir / f"test.{self.EXT}"
+
+        # Create the template under test with a single string
+        shutil.copy(self.FILE, template_file)
+        template_storage = self.FORMAT(template_file, is_template=True)
+        template_storage.new_unit(self.NEW_UNIT_KEY, "Source string")
+        template_storage.save()
+
+        template_content = template_file.read_text()
+
+        # Add a new language and translate the new string.
+        self.FORMAT.add_language(main_file, Language.objects.get(code="cs"), self.BASE)
+        target_storage = self.parse_file(main_file, template=template_file)
+        target_unit, add = target_storage.find_unit(self.NEW_UNIT_KEY, "Source string")
+        self.assertTrue(add)
+
+        # This is what Translation.update_units() does
+        target_storage.add_unit(target_unit)
+        target_unit.set_target("Translated string (CS)")
+        # Note: Explanations are currently ignored by most of the formats
+        target_unit.set_explanation("Explanation")
+        target_unit.set_source_explanation("Source explanation")
+        # The approved state is saved by a few formats
+        target_unit.set_state(STATE_APPROVED)
+        target_storage.save()
+
+        # Template should not change now
+        template_storage.save()
+        self.assertEqual(template_file.read_text(), template_content)
+
+        # Reload the storage to check notes were correctly written.
+        target_storage = self.parse_file(main_file, template=template_file)
+        target_unit, add = target_storage.find_unit(self.NEW_UNIT_KEY, "Source string")
+        self.assertFalse(add)
+        self.assertEqual(target_unit.target, "Translated string (CS)")
 
 
 class XMLMixin:
@@ -410,7 +465,7 @@ class PoFormatTest(BaseFormatTest):
         self.assertNotIn('\nmsgid "Hello, world!\\n"', content)
 
         # Add unit back, it should now overwrite obsolete one
-        storage.add_unit(unit.unit)
+        storage.add_unit(unit)
 
         # Verify it is properly added
         handle = BytesIO()
@@ -542,6 +597,7 @@ class GoI18NV1JSONFormatTest(JSONFormatTest):
     MASK = "go-i18n-json/*.json"
     EXPECTED_PATH = "go-i18n-json/cs_CZ.json"
     FIND_CONTEXT = "hello"
+    MATCH = "[]\n"
     NEW_UNIT_MATCH = (
         b'{\n        "id": "key",\n        "translation": "Source string"\n    }\n'
     )
@@ -572,7 +628,8 @@ class PhpFormatTest(BaseFormatTest):
     FIND_CONTEXT = "$LANG['foo']"
     FIND_MATCH = "bar"
     BASE = ""
-    NEW_UNIT_MATCH = b"\n$key = 'Source string';\n"
+    NEW_UNIT_KEY = "$LANG['key']"
+    NEW_UNIT_MATCH = b"\n$LANG['key'] = 'Source string';\n"
     EXPECTED_FLAGS = ""
     MONOLINGUAL = True
 
@@ -954,7 +1011,7 @@ class XWikiPropertiesFormatTest(PropertiesFormatTest):
     COUNT_CONTENT = 8
     EXT = "properties"
     MASK = "java/xwiki_*.properties"
-    EXPECTED_PATH = "java/xwiki_cs-CZ.properties"
+    EXPECTED_PATH = "java/xwiki_cs_CZ.properties"
     FIND = "job.question.button.confirm"
     FIND_CONTEXT = "job.question.button.confirm"
     FIND_MATCH = "Confirm the operation {0}"
@@ -974,7 +1031,7 @@ class XWikiPropertiesFormatTest(PropertiesFormatTest):
         unit, add = new_language.find_unit("job.status.success", "")
         self.assertTrue(add)
         unit.set_target("Fait")
-        new_language.add_unit(unit.unit)
+        new_language.add_unit(unit)
         new_language.save()
 
         # Read new content
@@ -987,7 +1044,7 @@ class XWikiPropertiesFormatTest(PropertiesFormatTest):
         self.assertEqual(expected + "\n", newdata)
 
 
-class XWikiPagePropertiesFormatTest(PropertiesFormatTest):
+class XWikiPagePropertiesFormatTest(XMLMixin, PropertiesFormatTest):
     FORMAT = XWikiPagePropertiesFormat
     FILE = TEST_XWIKI_PAGE_PROPERTIES
     SOURCE_FILE = TEST_XWIKI_PAGE_PROPERTIES_SOURCE
@@ -1046,7 +1103,7 @@ class XWikiPagePropertiesFormatTest(PropertiesFormatTest):
             units[index].context, units[index].source
         )
         self.assertTrue(create)
-        translation_data.add_unit(unit_to_translate.unit)
+        translation_data.add_unit(unit_to_translate)
         translation_data.all_units[index].unit = unit_to_translate.unit
         unit_to_translate.set_target(target)
 
@@ -1098,7 +1155,7 @@ class XWikiPagePropertiesFormatTest(PropertiesFormatTest):
         self.assert_same(testdata, newdata)
 
 
-class XWikiFullPageFormatTest(BaseFormatTest):
+class XWikiFullPageFormatTest(XMLMixin, BaseFormatTest):
     FORMAT = XWikiFullPageFormat
     FILE = TEST_XWIKI_FULL_PAGE
     SOURCE_FILE = TEST_XWIKI_FULL_PAGE_SOURCE
@@ -1170,7 +1227,7 @@ class XWikiFullPageFormatTest(BaseFormatTest):
             units[index].context, units[index].source
         )
         self.assertTrue(create)
-        translation_data.add_unit(unit_to_translate.unit)
+        translation_data.add_unit(unit_to_translate)
         translation_data.all_units[index].unit = unit_to_translate.unit
         unit_to_translate.set_target(target)
 

@@ -11,7 +11,7 @@ import os
 import shutil
 from collections import defaultdict
 from io import BytesIO
-from typing import TYPE_CHECKING, BinaryIO
+from typing import TYPE_CHECKING, BinaryIO, NoReturn
 from zipfile import ZipFile
 
 from django.utils.functional import cached_property
@@ -132,7 +132,7 @@ class ConvertFormat(TranslationFormat):
         """Save underlying store to disk."""
         self.save_atomic(self.storefile, self.save_content)
 
-    def convertfile(self, storefile, template_store):
+    def convertfile(self, storefile, template_store) -> NoReturn:
         raise NotImplementedError
 
     @staticmethod
@@ -187,15 +187,15 @@ class ConvertFormat(TranslationFormat):
         except Exception as exception:
             if errors is not None:
                 errors.append(exception)
-            report_error(cause="File parse error")
+            report_error("File-parsing error")
             return False
         return True
 
-    def add_unit(self, ttkit_unit) -> None:
-        self.store.addunit(ttkit_unit)
+    def add_unit(self, unit: TranslationUnit) -> None:
+        self.store.addunit(unit.unit)
 
     @classmethod
-    def get_class(cls):
+    def get_class(cls) -> None:
         return None
 
     def create_unit(
@@ -203,7 +203,7 @@ class ConvertFormat(TranslationFormat):
         key: str,
         source: str | list[str],
         target: str | list[str] | None = None,
-    ):
+    ) -> NoReturn:
         raise ValueError("Not supported")
 
     def cleanup_unused(self) -> list[str]:
@@ -522,7 +522,7 @@ class WindowsRCFormat(ConvertFormat):
                 sublang=sublang,
                 charset=encoding,
             )
-            outputrclines = converter.convertstore(self.store)
+            outputrclines = converter.convertstore(self.store, includefuzzy=True)
             try:
                 handle.write(outputrclines.encode(encoding))
             except UnicodeEncodeError:

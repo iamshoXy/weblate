@@ -85,11 +85,16 @@ class UniqueEmailMixin(forms.Form):
 class PasswordField(forms.CharField):
     """Password field."""
 
-    def __init__(self, *args, **kwargs) -> None:
-        kwargs["widget"] = forms.PasswordInput(render_value=False)
+    def __init__(self, new_password: bool = False, **kwargs) -> None:
+        kwargs["widget"] = forms.PasswordInput(
+            attrs={
+                "autocomplete": "new-password" if new_password else "current-password"
+            },
+            render_value=False,
+        )
         kwargs["max_length"] = 256
         kwargs["strip"] = False
-        super().__init__(*args, **kwargs)
+        super().__init__(**kwargs)
 
 
 class UniqueUsernameField(UsernameField):
@@ -465,8 +470,12 @@ class SetPasswordForm(DjangoSetPasswordForm):
     new_password1 = PasswordField(
         label=gettext_lazy("New password"),
         help_text=password_validation.password_validators_help_text_html(),
+        new_password=True,
     )
-    new_password2 = PasswordField(label=gettext_lazy("New password confirmation"))
+    new_password2 = PasswordField(
+        label=gettext_lazy("New password confirmation"),
+        new_password=True,
+    )
 
     @transaction.atomic
     def save(self, request, delete_session=False) -> None:
@@ -845,11 +854,7 @@ class NotificationForm(forms.Form):
         for field, notification_cls in self.notification_fields():
             frequency = self.cleaned_data[field]
             # We do not store removed field, defaults or disabled default subscriptions
-            if (
-                frequency == ""  # noqa: PLC1901
-                or frequency == "-1"
-                or (frequency == "0" and not self.show_default)
-            ):
+            if frequency in {"", "-1"} or (frequency == "0" and not self.show_default):
                 continue
             # Create/Get from database
             subscription, _created = self.user.subscription_set.update_or_create(

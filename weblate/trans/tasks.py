@@ -67,7 +67,7 @@ def perform_update(cls, pk, auto=False, obj=None) -> None:
             obj.do_update()
         else:
             obj.update_remote_branch()
-    except FileParseError:
+    except (FileParseError, RepositoryError):
         # This is stored as alert, so we can silently ignore here
         return
 
@@ -219,7 +219,13 @@ def update_remotes() -> None:
     if settings.AUTO_UPDATE not in {"full", "remote", True, False}:
         return
 
-    for component in Component.objects.with_repo().iterator():
+    now = timezone.now()
+    components = (
+        Component.objects.with_repo()
+        .annotate(hourmod=F("id") % 24)
+        .filter(hourmod=now.hour)
+    )
+    for component in components.prefetch().iterator(chunk_size=100):
         perform_update("Component", -1, auto=True, obj=component)
 
 
@@ -313,9 +319,7 @@ def repository_alerts(threshold=settings.REPOSITORY_ALERT_THRESHOLD) -> None:
             else:
                 component.delete_alert("RepositoryChanges")
         except RepositoryError as error:
-            report_error(
-                cause="Could not check repository status", project=component.project
-            )
+            report_error("Could not check repository status", project=component.project)
             component.add_alert("MergeFailure", error=component.error_text(error))
 
 
@@ -324,8 +328,11 @@ def component_alerts(component_ids=None) -> None:
     if component_ids:
         components = Component.objects.filter(pk__in=component_ids)
     else:
-        components = Component.objects.all()
-    for component in components.prefetch():
+        now = timezone.now()
+        components = Component.objects.annotate(hourmod=F("id") % 24).filter(
+            hourmod=now.hour
+        )
+    for component in components.prefetch().iterator(chunk_size=100):
         with transaction.atomic():
             component.update_alerts()
 
@@ -474,7 +481,7 @@ def auto_translate(
                 auto.process_mt(engines, threshold)
             else:
                 auto.process_others(component)
-        except MachineTranslationError as error:
+        except (MachineTranslationError, Component.DoesNotExist) as error:
             translation.log_error("failed automatic translation: %s", error)
             return {
                 "translation": translation_id,
@@ -572,7 +579,10 @@ def create_component(copy_from=None, copy_addons=False, in_task=False, **kwargs)
 
 @app.task(trail=False)
 def update_checks(pk: int, update_token: str, update_state: bool = False) -> None:
-    component = Component.objects.get(pk=pk)
+    try:
+        component = Component.objects.get(pk=pk)
+    except Component.DoesNotExist:
+        return
 
     # Skip when further updates are scheduled
     latest_token = cache.get(component.update_checks_key)
@@ -694,22 +704,27 @@ def detect_completed_translation(change_id: int, old_translated: int) -> None:
             author=change.author,
         )
 
+        # check if component is fully translated
+        component = change.translation.component
+        if component.stats.translated == component.stats.all:
+            change.translation.component.change_set.create(
+                action=Change.ACTION_COMPLETED_COMPONENT,
+                user=change.user,
+                author=change.author,
+            )
+
 
 @app.on_after_finalize.connect
 def setup_periodic_tasks(sender, **kwargs) -> None:
     sender.add_periodic_task(3600, commit_pending.s(), name="commit-pending")
-    sender.add_periodic_task(
-        crontab(hour=3, minute=5), update_remotes.s(), name="update-remotes"
-    )
+    sender.add_periodic_task(3600, update_remotes.s(), name="update-remotes")
     sender.add_periodic_task(
         crontab(minute=30), daily_update_checks.s(), name="daily-update-checks"
     )
     sender.add_periodic_task(
         crontab(hour=3, minute=45), repository_alerts.s(), name="repository-alerts"
     )
-    sender.add_periodic_task(
-        crontab(hour=3, minute=55), component_alerts.s(), name="component-alerts"
-    )
+    sender.add_periodic_task(3600, component_alerts.s(), name="component-alerts")
     sender.add_periodic_task(
         crontab(hour=0, minute=40), cleanup_suggestions.s(), name="suggestions-cleanup"
     )

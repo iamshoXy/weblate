@@ -25,7 +25,6 @@ from requests.exceptions import HTTPError, RequestException
 
 from weblate.checks.utils import highlight_string
 from weblate.lang.models import Language, PluralMapper
-from weblate.logger import LOGGER
 from weblate.utils.errors import report_error
 from weblate.utils.hash import calculate_dict_hash, calculate_hash, hash_to_checksum
 from weblate.utils.requests import request
@@ -76,6 +75,7 @@ class SettingsDict(TypedDict, total=False):
     model: str
     persona: str
     style: str
+    custom_model: str
 
 
 class TranslationResultDict(TypedDict, total=False):
@@ -88,6 +88,12 @@ class TranslationResultDict(TypedDict, total=False):
     show_quality: bool
     origin: str
     origin_url: str
+
+
+class UnitMemoryResultDict(TypedDict, total=False):
+    quality: list[int]
+    translation: list[str]
+    origin: list[None | BatchMachineTranslation]
 
 
 DownloadTranslations = Iterable[TranslationResultDict]
@@ -138,11 +144,13 @@ class BatchMachineTranslation:
         except Exception as error:
             raise ValidationError(
                 gettext("Could not fetch supported languages: %s") % error
-            )
+            ) from error
         try:
             self.download_multiple_translations("en", "de", [("test", None)], None, 75)
         except Exception as error:
-            raise ValidationError(gettext("Could not fetch translation: %s") % error)
+            raise ValidationError(
+                gettext("Could not fetch translation: %s") % error
+            ) from error
 
     @property
     def api_base_url(self):
@@ -223,18 +231,22 @@ class BatchMachineTranslation:
             return self.language_map[code]
         return code
 
-    def report_error(self, message) -> None:
+    def report_error(
+        self, cause: str, extra_log: str | None = None, message: bool = False
+    ) -> None:
         """Report error situations."""
-        report_error(cause="Machinery error")
-        LOGGER.error(message, self.name)
+        report_error(
+            f"machinery[{self.name}]: {cause}", extra_log=extra_log, message=message
+        )
 
     @cached_property
     def supported_languages(self):
         """Return list of supported languages."""
         # Try using list from cache
-        languages = cache.get(self.languages_cache)
-        if languages is not None:
-            return languages
+        languages_cache = cache.get(self.languages_cache)
+        if languages_cache is not None:
+            # hiredis-py 3 makes list from set
+            return set(languages_cache)
 
         if self.is_rate_limited():
             return set()
@@ -245,7 +257,7 @@ class BatchMachineTranslation:
         except Exception as exc:
             self.supported_languages_error = exc
             self.supported_languages_error_age = time.time()
-            self.report_error("Could not fetch languages from %s, using defaults")
+            self.report_error("Could not fetch languages, using defaults")
             return set()
 
         # Update cache
@@ -364,7 +376,10 @@ class BatchMachineTranslation:
 
     def get_language_possibilities(self, language: Language) -> Iterator[str]:
         code = language.code
-        yield self.map_language_code(code)
+        mapped_code = self.map_language_code(code)
+        if not mapped_code:
+            return
+        yield mapped_code
         code = code.replace("-", "_")
         while "_" in code:
             code = code.rsplit("_", 1)[0]
@@ -517,7 +532,7 @@ class BatchMachineTranslation:
                 if self.is_rate_limit_error(exc):
                     self.set_rate_limit()
 
-                self.report_error("Could not fetch translations from %s")
+                self.report_error("Could not fetch translations")
                 if isinstance(exc, MachineTranslationError):
                     raise
                 raise MachineTranslationError(self.get_error_message(exc)) from exc
@@ -525,13 +540,16 @@ class BatchMachineTranslation:
             # Postprocess translations
             for text, result in translations.items():
                 for _unit, original_source, replacements in pending[text]:
-                    for item in result:
+                    # Always operate on copy of the dictionaries
+                    partial = [x.copy() for x in result]
+
+                    for item in partial:
                         item["original_source"] = original_source
                     if cache_key:
-                        cache.set(cache_key, result, 30 * 86400)
+                        cache.set(cache_key, partial, 30 * 86400)
                     if replacements or self.force_uncleanup:
-                        self.uncleanup_results(replacements, result)
-                    output[original_source] = result
+                        self.uncleanup_results(replacements, partial)
+                    output[original_source] = partial
         return output
 
     def get_error_message(self, exc: Exception) -> str:
@@ -571,7 +589,7 @@ class BatchMachineTranslation:
         translations = self._translate(source, language, sources, user, threshold)
 
         for unit in units:
-            result = unit.machinery
+            result: UnitMemoryResultDict = unit.machinery
             if min(result.get("quality", ()), default=0) >= self.max_score:
                 continue
             translation_lists = [translations[text] for text in unit.plural_map]

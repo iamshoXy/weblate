@@ -108,7 +108,7 @@ def change_screenshot_assignment(sender, instance, action, **kwargs) -> None:
 
 
 @receiver(post_delete, sender=Screenshot)
-def update_alerts_on_screenshot_delete(sender, instance, **kwargs):
+def update_alerts_on_screenshot_delete(sender, instance, **kwargs) -> None:
     # Update the unused screenshot alert if screenshot is deleted
     if instance.translation.component.alert_set.filter(
         name="UnusedScreenshot"
@@ -125,7 +125,7 @@ def validate_screenshot_image(component, filename) -> bool:
             validate_bitmap(image_file)
     except ValidationError as error:
         component.log_error("failed to validate screenshot %s: %s", filename, error)
-        report_error(cause="Could not validate image from repository")
+        report_error("Could not validate image from repository")
         return False
     return True
 

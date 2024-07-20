@@ -657,6 +657,7 @@ CSP_IMG_SRC = get_env_list("WEBLATE_CSP_IMG_SRC")
 CSP_CONNECT_SRC = get_env_list("WEBLATE_CSP_CONNECT_SRC")
 CSP_STYLE_SRC = get_env_list("WEBLATE_CSP_STYLE_SRC")
 CSP_FONT_SRC = get_env_list("WEBLATE_CSP_FONT_SRC")
+CSP_FORM_SRC = get_env_list("WEBLATE_CSP_FORM_SRC")
 
 # Allow new user registrations
 REGISTRATION_OPEN = get_env_bool("WEBLATE_REGISTRATION_OPEN", True)
@@ -746,7 +747,6 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django.contrib.admin",
-    "django.contrib.admindocs",
     "django.contrib.sitemaps",
     "django.contrib.humanize",
     # Third party Django modules
@@ -1088,6 +1088,35 @@ WEBLATE_ADDONS = [
 ]
 modify_env_list(WEBLATE_ADDONS, "ADDONS")
 
+# Machinery configuration
+WEBLATE_MACHINERY = [
+    "weblate.machinery.apertium.ApertiumAPYTranslation",
+    "weblate.machinery.aws.AWSTranslation",
+    "weblate.machinery.alibaba.AlibabaTranslation",
+    "weblate.machinery.baidu.BaiduTranslation",
+    "weblate.machinery.deepl.DeepLTranslation",
+    "weblate.machinery.glosbe.GlosbeTranslation",
+    "weblate.machinery.google.GoogleTranslation",
+    "weblate.machinery.googlev3.GoogleV3Translation",
+    "weblate.machinery.libretranslate.LibreTranslateTranslation",
+    "weblate.machinery.microsoft.MicrosoftCognitiveTranslation",
+    "weblate.machinery.modernmt.ModernMTTranslation",
+    "weblate.machinery.mymemory.MyMemoryTranslation",
+    "weblate.machinery.netease.NeteaseSightTranslation",
+    "weblate.machinery.tmserver.TMServerTranslation",
+    "weblate.machinery.yandex.YandexTranslation",
+    "weblate.machinery.yandexv2.YandexV2Translation",
+    "weblate.machinery.saptranslationhub.SAPTranslationHub",
+    "weblate.machinery.youdao.YoudaoTranslation",
+    "weblate.machinery.ibm.IBMTranslation",
+    "weblate.machinery.systran.SystranTranslation",
+    "weblate.machinery.openai.OpenAITranslation",
+    "weblate.machinery.weblatetm.WeblateTranslation",
+    "weblate.memory.machine.WeblateMemory",
+]
+modify_env_list(WEBLATE_MACHINERY, "MACHINERY")
+
+
 # E-mail address that error messages come from.
 SERVER_EMAIL = get_env_str("WEBLATE_SERVER_EMAIL", "weblate@example.com")
 
@@ -1210,7 +1239,12 @@ EMAIL_HOST_USER = get_env_str(
 EMAIL_HOST_PASSWORD = get_env_str(
     "WEBLATE_EMAIL_HOST_PASSWORD", get_env_str("WEBLATE_EMAIL_PASSWORD")
 )
-EMAIL_PORT = get_env_int("WEBLATE_EMAIL_PORT", 25)
+DEFAULT_EMAIL_PORT = 25
+if "WEBLATE_EMAIL_USE_TLS" in os.environ:
+    DEFAULT_EMAIL_PORT = 587
+elif "WEBLATE_EMAIL_USE_SSL" in os.environ:
+    DEFAULT_EMAIL_PORT = 465
+EMAIL_PORT = get_env_int("WEBLATE_EMAIL_PORT", DEFAULT_EMAIL_PORT)
 
 # Detect SSL/TLS setup
 if "WEBLATE_EMAIL_USE_TLS" in os.environ or "WEBLATE_EMAIL_USE_SSL" in os.environ:
@@ -1269,6 +1303,7 @@ CELERY_TASK_ROUTES = {
 
 # CORS allowed origins
 CORS_ALLOWED_ORIGINS = get_env_list("WEBLATE_CORS_ALLOWED_ORIGINS")
+CORS_ALLOW_ALL_ORIGINS = get_env_bool("WEBLATE_CORS_ALLOW_ALL_ORIGINS", False)
 CORS_URLS_REGEX = rf"^{URL_PREFIX}/api/.*$"
 
 # Database backup type
@@ -1352,9 +1387,9 @@ GOOGLE_ANALYTICS_ID = get_env_str("WEBLATE_GOOGLE_ANALYTICS_ID")
 SENTRY_DSN = get_env_str("SENTRY_DSN")
 SENTRY_ENVIRONMENT = get_env_str("SENTRY_ENVIRONMENT", SITE_DOMAIN)
 SENTRY_TRACES_SAMPLE_RATE = get_env_float("SENTRY_TRACES_SAMPLE_RATE")
-SENTRY_PROFILES_SAMPLE_RATE = get_env_float("SENTRY_PROFILES_SAMPLE_RATE")
+SENTRY_PROFILES_SAMPLE_RATE = get_env_float("SENTRY_PROFILES_SAMPLE_RATE", 1.0)
 SENTRY_TOKEN = get_env_str("SENTRY_TOKEN")
-SENTRY_SEND_PII = get_env_bool("SENTRY_SEND_PII", True)
+SENTRY_SEND_PII = get_env_bool("SENTRY_SEND_PII", False)
 AKISMET_API_KEY = get_env_str("WEBLATE_AKISMET_API_KEY")
 
 # Web Monetization

@@ -7,6 +7,8 @@ from __future__ import annotations
 import os
 import re
 import sys
+from email.errors import HeaderDefect
+from email.headerregistry import Address
 from gettext import c2py  # type: ignore[attr-defined]
 from io import BytesIO
 from pathlib import Path
@@ -18,7 +20,6 @@ from django.core.exceptions import ValidationError
 from django.core.validators import EmailValidator as EmailValidatorDjango
 from django.core.validators import URLValidator, validate_ipv46_address
 from django.utils.translation import gettext, gettext_lazy
-from PIL import Image
 
 from weblate.trans.util import cleanup_path
 from weblate.utils.data import data_dir
@@ -80,6 +81,8 @@ def validate_re_nonempty(value):
 
 def validate_bitmap(value) -> None:
     """Validate bitmap, based on django.forms.fields.ImageField."""
+    from PIL import Image
+
     if value is None:
         return
 
@@ -176,13 +179,19 @@ def validate_username(value) -> None:
 class EmailValidator(EmailValidatorDjango):
     message = gettext_lazy("Enter a valid e-mail address.")
 
-    def __call__(self, value):
+    def __call__(self, value: str | None):
         super().__call__(value)
         user_part = value.rsplit("@", 1)[0]
         if EMAIL_BLACKLIST.match(user_part):
             raise ValidationError(gettext("Enter a valid e-mail address."))
         if not re.match(settings.REGISTRATION_EMAIL_MATCH, value):
             raise ValidationError(gettext("This e-mail address is disallowed."))
+        try:
+            Address(addr_spec=value)
+        except HeaderDefect as error:
+            raise ValidationError(
+                gettext("Invalid e-mail address: {}").format(error)
+            ) from error
 
 
 validate_email = EmailValidator()

@@ -35,18 +35,10 @@ class MicrosoftCognitiveTranslation(XMLMachineTranslationMixin, MachineTranslati
     settings_form = MicrosoftMachineryForm
 
     language_map = {
-        "zh-hant": "zh-Hant",
-        "zh-hans": "zh-Hans",
-        "zh-tw": "zh-Hant",
-        "zh-cn": "zh-Hans",
-        "tlh": "tlh-Latn",
-        "tlh-qaak": "tlh-Piqd",
-        "nb": "no",
-        "bs-latn": "bs-Latn",
-        "sr": "sr-Latn",
-        "sr-latn": "sr-Latn",
-        "sr-cyrl": "sr-Cyrl",
-        "mn": "mn-Mong",
+        "zh_Hant": "zh-hant",
+        "zh_Hans": "zh-hans",
+        "zh_TW": "zh-hant",
+        "zh_CN": "zh-hans",
     }
 
     @classmethod
@@ -178,7 +170,7 @@ class MicrosoftCognitiveTranslation(XMLMachineTranslationMixin, MachineTranslati
     def get_highlights(self, text, unit):
         result = list(super().get_highlights(text, unit))
 
-        for term in get_glossary_terms(unit):
+        for term in get_glossary_terms(unit, include_variants=False):
             for start, end in term.glossary_positions:
                 glossary_highlight = (start, end, text[start:end], term)
                 handled = False

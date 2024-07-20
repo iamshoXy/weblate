@@ -1374,6 +1374,7 @@ configuration, but this might need customization for your environment.
     :setting:`CSP_CONNECT_SRC`,
     :setting:`CSP_STYLE_SRC`,
     :setting:`CSP_FONT_SRC`
+    :setting:`CSP_FORM_SRC`
 
 .. _uwsgi:
 
@@ -1646,7 +1647,7 @@ and profiles for defined percentage of operations. This can be configured using
 .. seealso::
 
    `Sentry Performance Monitoring <https://docs.sentry.io/product/performance/>`_,
-   `Sentry Profiling <https://docs.sentry.io/product/profiling/>`_
+   `Sentry Profiling <https://docs.sentry.io/product/explore/profiling/>`_
 
 Rollbar
 +++++++

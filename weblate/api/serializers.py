@@ -697,10 +697,10 @@ class ComponentSerializer(RemovableSerializer[Component]):
             if zipfile is not None:
                 try:
                     create_component_from_zip(attrs, zipfile)
-                except BadZipfile:
+                except BadZipfile as error:
                     raise serializers.ValidationError(
                         {"zipfile": "Could not parse uploaded ZIP file."}
-                    )
+                    ) from error
 
         # Call model validation here, DRF does not do that
         instance.clean()
@@ -977,7 +977,7 @@ class UserStatisticsSerializer(ReadOnlySerializer):
 
 
 class PluralField(serializers.ListField):
-    def __init__(self, child_allow_blank=False, **kwargs):
+    def __init__(self, child_allow_blank=False, **kwargs) -> None:
         kwargs["child"] = serializers.CharField(
             trim_whitespace=False, allow_blank=child_allow_blank
         )
@@ -1006,7 +1006,7 @@ class MemorySerializer(serializers.ModelSerializer[Memory]):
 class LabelSerializer(serializers.ModelSerializer[Label]):
     class Meta:
         model = Label
-        fields = ("id", "name", "color")
+        fields = ("id", "name", "description", "color")
         read_only_fields = ("project",)
 
 
@@ -1059,6 +1059,7 @@ class UnitSerializer(serializers.ModelSerializer[Unit]):
     source = PluralField()
     target = PluralField()
     timestamp = serializers.DateTimeField(read_only=True)
+    last_updated = serializers.DateTimeField(read_only=True)
     pending = serializers.BooleanField(read_only=True)
     labels = UnitLabelsSerializer(many=True)
 
@@ -1094,6 +1095,7 @@ class UnitSerializer(serializers.ModelSerializer[Unit]):
             "extra_flags",
             "pending",
             "timestamp",
+            "last_updated",
         )
         extra_kwargs = {"url": {"view_name": "api:unit-detail"}}
 
@@ -1333,6 +1335,8 @@ class ChangeSerializer(RemovableSerializer[Change]):
             "timestamp",
             "action",
             "target",
+            "old",
+            "details",
             "id",
             "action_name",
             "url",
@@ -1403,7 +1407,7 @@ class AddonSerializer(serializers.ModelSerializer[Addon]):
         extra_kwargs = {"url": {"view_name": "api:addon-detail"}}
 
     @staticmethod
-    def check_addon(name, queryset):
+    def check_addon(name, queryset) -> None:
         installed = set(queryset.values_list("name", flat=True))
         available = {
             x.name for x in ADDONS.values() if x.multiple or x.name not in installed
@@ -1417,13 +1421,13 @@ class AddonSerializer(serializers.ModelSerializer[Addon]):
         instance = self.instance
         try:
             name = attrs["name"]
-        except KeyError:
+        except KeyError as error:
             if self.partial and instance:
                 name = instance.name
             else:
                 raise serializers.ValidationError(
                     {"name": "Can not change add-on name"}
-                )
+                ) from error
         # Update or create
         component = instance.component if instance else self._context.get("component")
         project = instance.project if instance else self._context.get("project")
@@ -1433,11 +1437,17 @@ class AddonSerializer(serializers.ModelSerializer[Addon]):
             raise serializers.ValidationError({"name": "Can not change add-on name"})
         try:
             addon_class = ADDONS[name]
-        except KeyError:
-            raise serializers.ValidationError({"name": f"Add-on not found: {name}"})
+        except KeyError as error:
+            raise serializers.ValidationError(
+                {"name": f"Add-on not found: {name}"}
+            ) from error
 
         # Don't allow duplicate add-ons
         addon = addon_class(Addon())
+        if not component and addon_class.needs_component:
+            raise serializers.ValidationError(
+                {"component": "This add-on can only be installed on the component."}
+            )
         if not instance:
             if component:
                 self.check_addon(name, Addon.objects.filter_component(component))

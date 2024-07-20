@@ -263,7 +263,7 @@ class CreateComponent(BaseCreateView):
             return
         except (OSError, subprocess.CalledProcessError) as error:
             if getattr(error, "returncode", 0) != 1:
-                report_error(cause="Failed licensee invocation")
+                report_error("Failed licensee invocation")
             return
         result = json.loads(process_result.stdout)
         for license_data in result["licenses"]:
@@ -431,7 +431,7 @@ class CreateComponentSelection(CreateComponent):
     template_name = "trans/component_create.html"
 
     components: ComponentQuerySet
-    origin = None
+    origin: None | str = None
 
     @cached_property
     def branch_data(self):

@@ -1,17 +1,113 @@
-Weblate 5.6
+Weblate 5.7
 -----------
 
 Not yet released.
 
 **New features**
 
+* :ref:`adding-new-strings` can now create plural strings in the user interface.
+* :ref:`labels` now include description to explain them.
+* New :ref:`subscriptions` for completed translation and component.
+* :ref:`mt-openai` now supports custom models and URLs and offers rephrasing of existing strings.
+
 **Improvements**
 
-* :ref:`subscriptions` now include strings which need updating.
+* :ref:`addon-weblate.properties.sort` can now do case-sensitive sorting.
+* The status widgets are now supported site-wide and language-wide, see :ref:`promotion`.
+* :ref:`reports` are now available for categories.
+* Highlight newlines in the editor.
+* :doc:`/formats/csv` better handle with with two fields only.
+* Browse mode can now be navigated using keyboard, see :ref:`keyboard`.
 
 **Bug fixes**
 
+* Accessibility of keyboard navigation.
+* :ref:`git-exporter` now works with all Git based :ref:`vcs`.
+
 **Compatibility**
+
+* Weblate now uses mistletoe instead of misaka as a Markdown renderer.
+* :ref:`csp` is now stricter what might block third-party customizations.
+* Dropped support for Amagama in :ref:`machine-translation-setup` as the service is no longer maintained.
+* Default value for :setting:`SENTRY_SEND_PII` was changed.
+
+**Upgrading**
+
+Please follow :ref:`generic-upgrade-instructions` in order to perform update.
+
+`All changes in detail <https://github.com/WeblateOrg/weblate/milestone/116?closed=1>`__.
+
+Weblate 5.6.2
+-------------
+
+Released on July 1st 2024.
+
+**Bug fixes**
+
+* Rendering of :ref:`labels` color selection widget.
+* Detection of pending outgoing commits.
+* :ref:`addons` button layout.
+* Crash when installing :ref:`addon-weblate.discovery.discovery` add-on.
+* Removal of source strings in :ref:`glossary`.
+* Validation of :ref:`projectbackup` ZIP file upon restoring (CVE-2024-39303 / GHSA-jfgp-674x-6q4p).
+
+**Upgrading**
+
+Please follow :ref:`generic-upgrade-instructions` in order to perform update.
+
+`All changes in detail <https://github.com/WeblateOrg/weblate/milestone/124?closed=1>`__.
+
+Weblate 5.6.1
+-------------
+
+Released on June 24th 2024.
+
+**Improvements**
+
+* Docker container accepts :envvar:`WEBLATE_REMOVE_ADDONS` and :envvar:`WEBLATE_ADD_MACHINERY` to customize automatic suggestion services and :envvar:`WEBLATE_CORS_ALLOW_ALL_ORIGINS` for CORS handling in API.
+* Added OpenMetrics compatibility for :http:get:`/api/metrics/`.
+
+**Bug fixes**
+
+* Language aliases in :doc:`/admin/machine`.
+
+**Upgrading**
+
+Please follow :ref:`generic-upgrade-instructions` in order to perform update.
+
+`All changes in detail <https://github.com/WeblateOrg/weblate/milestone/123?closed=1>`__.
+
+Weblate 5.6
+-----------
+
+Released on June 19th 2024.
+
+**New features**
+
+* :ref:`addons` activity log for tracking add-on activity.
+* Improved date range selection in :ref:`reports`.
+
+**Improvements**
+
+* :ref:`subscriptions` now include strings which need updating.
+* Improved compatibility with password managers.
+* Improved tracking of uploaded changes.
+* Gracefully handle temporary machine translation errors in automatic suggestions.
+* :http:get:`/api/units/(int:id)/` now includes `last_updated` timestamp.
+* :http:get:`/api/changes/(int:id)/` now includes `old` and `details`.
+* Reduced memory usage and increased performance of some views.
+
+**Bug fixes**
+
+* Loading of strings with many glossary matches.
+* Fixed behavior of some site-wide :ref:`addons`.
+* Saving strings needing editing to :doc:`/formats/winrc`.
+* :ref:`check-xml-tags` better handle XML entities.
+* Automatic suggestions could mix up replacements between translated strings.
+
+**Compatibility**
+
+* Compatibility with Django 5.1.
 
 **Upgrading**
 
@@ -65,7 +161,7 @@ Released on May 3rd 2024.
 **Improvements**
 
 * Improved performance of rendering large lists of objects.
-* Added links to manage other scope :ref:`addons`.
+* Component management: added links to manage project/site-wide :ref:`addons`.
 
 **Bug fixes**
 
