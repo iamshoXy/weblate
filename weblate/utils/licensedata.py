@@ -1115,6 +1115,24 @@ LICENSES = (
         True,
     ),
     ("DOC", "DOC License", "https://spdx.org/licenses/DOC.html", False),
+    (
+        "DocBook-Schema",
+        "DocBook Schema License",
+        "https://spdx.org/licenses/DocBook-Schema.html",
+        False,
+    ),
+    (
+        "DocBook-Stylesheet",
+        "DocBook Stylesheet License",
+        "https://spdx.org/licenses/DocBook-Stylesheet.html",
+        False,
+    ),
+    (
+        "DocBook-XML",
+        "DocBook XML License",
+        "https://spdx.org/licenses/DocBook-XML.html",
+        False,
+    ),
     ("Dotseqn", "Dotseqn License", "https://spdx.org/licenses/Dotseqn.html", False),
     ("DSDP", "DSDP License", "https://spdx.org/licenses/DSDP.html", False),
     ("dvipdfm", "dvipdfm License", "https://spdx.org/licenses/dvipdfm.html", False),
@@ -1526,6 +1544,7 @@ LICENSES = (
         "https://spdx.org/licenses/BSD-3-Clause-HP.html",
         False,
     ),
+    ("HIDAPI", "HIDAPI License", "https://spdx.org/licenses/HIDAPI.html", False),
     (
         "Hippocratic-2.1",
         "Hippocratic License 2.1",
@@ -1590,6 +1609,12 @@ LICENSES = (
         "HPND-merchantability-variant",
         "Historical Permission Notice and Disclaimer - merchantability variant",
         "https://spdx.org/licenses/HPND-merchantability-variant.html",
+        False,
+    ),
+    (
+        "HPND-Netrek",
+        "Historical Permission Notice and Disclaimer - Netrek variant",
+        "https://spdx.org/licenses/HPND-Netrek.html",
         False,
     ),
     (
@@ -2008,6 +2033,12 @@ LICENSES = (
         False,
     ),
     (
+        "MIT-Click",
+        "MIT Click License",
+        "https://spdx.org/licenses/MIT-Click.html",
+        False,
+    ),
+    (
         "MIT-Festival",
         "MIT Festival Variant",
         "https://spdx.org/licenses/MIT-Festival.html",
@@ -2120,7 +2151,6 @@ LICENSES = (
         "https://spdx.org/licenses/NBPL-1.0.html",
         False,
     ),
-    ("Net-SNMP", "Net-SNMP License", "https://spdx.org/licenses/Net-SNMP.html", False),
     ("NetCDF", "NetCDF license", "https://spdx.org/licenses/NetCDF.html", False),
     (
         "NGPL",
@@ -2566,6 +2596,12 @@ LICENSES = (
     ),
     ("Ruby", "Ruby License", "https://spdx.org/licenses/Ruby.html", True),
     (
+        "Ruby-pty",
+        "Ruby pty extension license",
+        "https://spdx.org/licenses/Ruby-pty.html",
+        False,
+    ),
+    (
         "SAX-PD",
         "Sax Public Domain Notice",
         "https://spdx.org/licenses/SAX-PD.html",
@@ -2900,7 +2936,19 @@ LICENSES = (
         "https://spdx.org/licenses/TOSL.html",
         False,
     ),
+    (
+        "TrustedQSL",
+        "TrustedQSL License",
+        "https://spdx.org/licenses/TrustedQSL.html",
+        False,
+    ),
     ("TTYP0", "TTYP0 License", "https://spdx.org/licenses/TTYP0.html", False),
+    (
+        "Ubuntu-font-1.0",
+        "Ubuntu Font Licence v1.0",
+        "https://spdx.org/licenses/Ubuntu-font-1.0.html",
+        False,
+    ),
     ("UCAR", "UCAR License", "https://spdx.org/licenses/UCAR.html", False),
     ("ulem", "ulem License", "https://spdx.org/licenses/ulem.html", False),
     (
@@ -2980,7 +3028,7 @@ LICENSES = (
         "W3C-20150513",
         "W3C Software Notice and Document License (2015-05-13)",
         "https://spdx.org/licenses/W3C-20150513.html",
-        False,
+        True,
     ),
     (
         "W3C-19980720",
@@ -3008,6 +3056,12 @@ LICENSES = (
         "X11-distribute-modifications-variant",
         "X11 License Distribution Modification Variant",
         "https://spdx.org/licenses/X11-distribute-modifications-variant.html",
+        False,
+    ),
+    (
+        "X11-swapped",
+        "X11 swapped final paragraphs",
+        "https://spdx.org/licenses/X11-swapped.html",
         False,
     ),
     (

@@ -20,9 +20,6 @@ cp node_modules/mousetrap/mousetrap.js ../../weblate/static/vendor/
 # Mousetrap global bind
 cp node_modules/mousetrap-global-bind/mousetrap-global-bind.js ../../weblate/static/vendor/
 
-# js.cookie
-cp node_modules/js-cookie/dist/js.cookie.js ../../weblate/static/vendor/
-
 # jQuery
 cp node_modules/jquery/dist/jquery.js ../../weblate/static/vendor/
 
@@ -45,9 +42,6 @@ cp node_modules/multi.js/src/multi.css ../../weblate/static/vendor/
 
 # Slugify
 cp node_modules/slugify/slugify.js ../../weblate/static/vendor/slugify.js
-
-# Sentry
-./node_modules/.bin/browserify node_modules/@sentry/browser/cjs/index.js --standalone Sentry > ../../weblate/static/vendor/sentry.js
 
 # Date Range Picker
 cp node_modules/daterangepicker/daterangepicker.js ../../weblate/static/vendor/

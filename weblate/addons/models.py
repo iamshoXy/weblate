@@ -273,6 +273,10 @@ def execute_addon_event(
     method: str | Callable,
     args: tuple | None = None,
 ) -> None:
+    # Trigger repository scoped add-ons only on the main component
+    if addon.repo_scope and component.linked_component:
+        return
+
     # Log logging result and error flag for add-on activity log
     log_result = None
     error_occurred = False
@@ -437,14 +441,13 @@ def post_update(
     sender,
     component: Component,
     previous_head: str,
-    child: bool = False,
     skip_push: bool = False,
     **kwargs,
 ) -> None:
     handle_addon_event(
         AddonEvent.EVENT_POST_UPDATE,
         "post_update",
-        (component, previous_head, skip_push, child),
+        (component, previous_head, skip_push),
         component=component,
     )
 
@@ -470,21 +473,23 @@ def pre_update(sender, component: Component, **kwargs) -> None:
 
 
 @receiver(vcs_pre_commit)
-def pre_commit(sender, translation: Translation, author, **kwargs) -> None:
+def pre_commit(
+    sender, translation: Translation, author: str, store_hash: bool, **kwargs
+) -> None:
     handle_addon_event(
         AddonEvent.EVENT_PRE_COMMIT,
         "pre_commit",
-        (translation, author),
+        (translation, author, store_hash),
         translation=translation,
     )
 
 
 @receiver(vcs_post_commit)
-def post_commit(sender, component: Component, **kwargs) -> None:
+def post_commit(sender, component: Component, store_hash: bool, **kwargs) -> None:
     handle_addon_event(
         AddonEvent.EVENT_POST_COMMIT,
         "post_commit",
-        (component,),
+        (component, store_hash),
         component=component,
     )
 

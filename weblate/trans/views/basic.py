@@ -1,7 +1,6 @@
 # Copyright © Michal Čihař <michal@weblate.org>
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
-
 from __future__ import annotations
 
 import re
@@ -11,12 +10,14 @@ from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect
+from django.urls import reverse
 from django.utils.html import format_html
 from django.utils.http import urlencode
 from django.utils.translation import gettext
 from django.views.decorators.cache import never_cache
 from django.views.generic import RedirectView
 
+from weblate.auth.models import AuthenticatedHttpRequest
 from weblate.formats.models import EXPORTERS
 from weblate.lang.models import Language
 from weblate.trans.exceptions import FileParseError
@@ -72,11 +73,11 @@ from weblate.utils.views import (
 )
 
 if TYPE_CHECKING:
-    from weblate.auth.models import AuthenticatedHttpRequest
+    from weblate.auth.models import AuthenticatedHttpRequest, User
 
 
 @never_cache
-def list_projects(request):
+def list_projects(request: AuthenticatedHttpRequest):
     """List all projects."""
     query_string = ""
     projects = request.user.allowed_projects
@@ -109,7 +110,9 @@ def list_projects(request):
     )
 
 
-def add_ghost_translations(component, user, translations, generator, **kwargs) -> None:
+def add_ghost_translations(
+    component, user: User, translations, generator, **kwargs
+) -> None:
     """Add ghost translations for user languages to the list."""
     if component.can_add_new_language(user, fast=True):
         existing = {translation.language.code for translation in translations}
@@ -122,7 +125,7 @@ def add_ghost_translations(component, user, translations, generator, **kwargs) -
             translations.append(generator(component, language, **kwargs))
 
 
-def show_engage(request, path):
+def show_engage(request: AuthenticatedHttpRequest, path):
     # Legacy URL
     if len(path) == 2:
         return redirect("engage", permanent=True, path=[path[0], "-", path[1]])
@@ -307,7 +310,7 @@ def show_project_language(request: AuthenticatedHttpRequest, obj: ProjectLanguag
     )
 
 
-def show_category_language(request, obj):
+def show_category_language(request: AuthenticatedHttpRequest, obj):
     language_object = obj.language
     category_object = obj.category
     user = request.user
@@ -372,7 +375,7 @@ def show_category_language(request, obj):
     )
 
 
-def show_project(request, obj):
+def show_project(request: AuthenticatedHttpRequest, obj):
     user = request.user
 
     all_changes = obj.change_set.filter_components(request.user).prefetch()
@@ -457,7 +460,7 @@ def show_project(request, obj):
     )
 
 
-def show_category(request, obj):
+def show_category(request: AuthenticatedHttpRequest, obj):
     user = request.user
 
     all_changes = (
@@ -540,7 +543,7 @@ def show_category(request, obj):
     )
 
 
-def show_component(request, obj):
+def show_component(request: AuthenticatedHttpRequest, obj):
     user = request.user
 
     last_changes = obj.change_set.prefetch().recent(skip_preload="component")
@@ -600,7 +603,7 @@ def show_component(request, obj):
     )
 
 
-def show_translation(request, obj):
+def show_translation(request: AuthenticatedHttpRequest, obj):
     component = obj.component
     project = component.project
     last_changes = obj.change_set.prefetch().recent(skip_preload="translation")
@@ -689,7 +692,7 @@ def show_translation(request, obj):
 
 
 @never_cache
-def data_project(request, project):
+def data_project(request: AuthenticatedHttpRequest, project):
     obj = parse_path(request, [project], (Project,))
     return render(
         request,
@@ -706,7 +709,7 @@ def data_project(request, project):
 @login_required
 @session_ratelimit_post("language", logout_user=False)
 @transaction.atomic
-def new_language(request, path):
+def new_language(request: AuthenticatedHttpRequest, path):
     obj = parse_path(request, path, (Component,))
     user = request.user
 
@@ -754,12 +757,20 @@ def new_language(request, path):
                             ),
                         )
                 try:
-                    if added and not obj.create_translations(request=request):
-                        messages.warning(
+                    if added and not obj.create_translations(
+                        request=request, run_async=True
+                    ):
+                        messages.success(
                             request,
                             gettext(
-                                "The translation will be updated in the background."
+                                "All languages have been added, updates of translations are in progress."
                             ),
+                        )
+                        result = "{}?info=1".format(
+                            reverse(
+                                "component_progress",
+                                kwargs={"path": result.get_url_path()},
+                            )
                         )
                 except FileParseError:
                     pass
@@ -785,16 +796,16 @@ def new_language(request, path):
 
 
 @never_cache
-def healthz(request):
+def healthz(request: AuthenticatedHttpRequest):
     """Make simple health check endpoint."""
     return HttpResponse("ok")
 
 
 @never_cache
-def show_component_list(request, name):
+def show_component_list(request: AuthenticatedHttpRequest, name):
     obj = get_object_or_404(ComponentList, slug__iexact=name)
     components = prefetch_tasks(
-        prefetch_stats(obj.components.filter_access(request.user).prefetch())
+        prefetch_stats(obj.components.filter_access(request.user).order().prefetch())
     )
 
     return render(
@@ -812,7 +823,7 @@ def show_component_list(request, name):
 
 
 @never_cache
-def guide(request, path):
+def guide(request: AuthenticatedHttpRequest, path):
     obj = parse_path(request, path, (Component,))
 
     return render(

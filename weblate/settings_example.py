@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 # mypy: disable-error-code="var-annotated"
+from __future__ import annotations
 
 import os
 import platform
@@ -16,6 +17,9 @@ SITE_DOMAIN = ""
 
 # Whether site uses https
 ENABLE_HTTPS = False
+
+# Site URL
+SITE_URL = "{}://{}".format("https" if ENABLE_HTTPS else "http", SITE_DOMAIN)
 
 #
 # Django settings for Weblate project.
@@ -99,6 +103,7 @@ LANGUAGES = (
     ("es", "Español"),
     ("fi", "Suomi"),
     ("fr", "Français"),
+    ("ga", "Gaeilge"),
     ("gl", "Galego"),
     ("he", "עברית"),
     ("hu", "Magyar"),
@@ -232,6 +237,13 @@ AUTHENTICATION_BACKENDS: tuple[str, ...] = (
 # Custom user model
 AUTH_USER_MODEL = "weblate_auth.User"
 
+# WebAuthn
+OTP_WEBAUTHN_RP_NAME = SITE_TITLE
+OTP_WEBAUTHN_RP_ID = SITE_DOMAIN.split(":")[0]
+OTP_WEBAUTHN_ALLOWED_ORIGINS = [SITE_URL]
+OTP_WEBAUTHN_ALLOW_PASSWORDLESS_LOGIN = False
+OTP_WEBAUTHN_HELPER_CLASS = "weblate.accounts.utils.WeblateWebAuthnHelper"
+
 # Social auth backends setup
 SOCIAL_AUTH_GITHUB_KEY = ""
 SOCIAL_AUTH_GITHUB_SECRET = ""
@@ -283,6 +295,7 @@ SOCIAL_AUTH_PIPELINE = (
     "social_core.pipeline.user.create_user",
     "social_core.pipeline.social_auth.associate_user",
     "social_core.pipeline.social_auth.load_extra_data",
+    "weblate.accounts.pipeline.second_factor",
     "weblate.accounts.pipeline.cleanup_next",
     "weblate.accounts.pipeline.user_full_name",
     "weblate.accounts.pipeline.store_email",
@@ -362,6 +375,7 @@ MIDDLEWARE = [
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "weblate.accounts.middleware.AuthenticationMiddleware",
+    "django_otp.middleware.OTPMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "social_django.middleware.SocialAuthExceptionMiddleware",
@@ -416,6 +430,10 @@ INSTALLED_APPS = [
     "django_filters",
     "django_celery_beat",
     "corsheaders",
+    "django_otp",
+    "django_otp.plugins.otp_static",
+    "django_otp.plugins.otp_totp",
+    "django_otp_webauthn",
 ]
 
 # Custom exception reporter to include some details

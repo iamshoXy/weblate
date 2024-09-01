@@ -59,7 +59,7 @@ project_copyright = "Michal Čihař"
 author = "Michal Čihař"
 
 # The full version, including alpha/beta/rc tags
-release = "5.7"
+release = "5.8"
 
 # -- General configuration ---------------------------------------------------
 
@@ -110,6 +110,15 @@ ogp_custom_meta_tags = [
 #
 # html_theme = "sphinx_rtd_theme"
 html_theme = "furo"
+
+# Define the canonical URL if you are using a custom domain on Read the Docs
+html_baseurl = os.environ.get("READTHEDOCS_CANONICAL_URL", "")
+
+# Tell Jinja2 templates the build is running on Read the Docs
+if os.environ.get("READTHEDOCS", "") == "True":
+    if "html_context" not in globals():
+        html_context = {}
+    html_context["READTHEDOCS"] = True
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
@@ -330,6 +339,7 @@ linkcheck_ignore = [
     "https://translate.systran.net/en/account",
     # Seems unstable
     "https://pagure.io/",
+    "https://azure.microsoft.com/en-us/products/ai-services/ai-translator",
 ]
 
 # HTTP docs
@@ -358,6 +368,7 @@ autodoc_mock_imports = [
     "git",
     "PIL",
     "borg",
+    "appconf",
     "weblate.addons.models",
     "weblate.trans.models",
     "weblate.lang.models",

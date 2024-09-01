@@ -365,6 +365,13 @@ You can also fine-tune individual worker categories:
       CELERY_NOTIFY_OPTIONS: --concurrency 1
       CELERY_TRANSLATE_OPTIONS: --concurrency 1
 
+Memory usage can be further reduced by running only a single Celery process:
+
+.. code-block:: yaml
+
+    environment:
+      CELERY_SINGLE_PROCESS: 1
+
 .. seealso::
 
    :envvar:`WEBLATE_WORKERS`
@@ -374,6 +381,7 @@ You can also fine-tune individual worker categories:
    :envvar:`CELERY_TRANSLATE_OPTIONS`,
    :envvar:`CELERY_BACKUP_OPTIONS`,
    :envvar:`CELERY_BEAT_OPTIONS`,
+   :envvar:`CELERY_SINGLE_PROCESS`,
    :envvar:`WEB_WORKERS`
 
 .. _docker-scaling:
@@ -532,6 +540,18 @@ Generic settings
             :envvar:`WEBLATE_ADMIN_PASSWORD`,
             :envvar:`WEBLATE_ADMIN_NAME`,
             :envvar:`WEBLATE_ADMIN_EMAIL`
+
+.. envvar:: WEBLATE_ADMIN_NOTIFY_ERROR
+
+   Whether to sent e-mail to admins upon server error. Turned on by default.
+
+   You might want to use other error collection like Sentry or Rollbar and turn this off.
+
+   .. seealso::
+
+      :ref:`django:logging-security-implications`,
+      :envvar:`ROLLBAR_KEY`,
+      :envvar:`SENTRY_DSN`
 
 .. envvar:: WEBLATE_SERVER_EMAIL
 
@@ -1824,6 +1844,21 @@ Container settings
         :doc:`Celery worker options <celery:reference/celery.bin.worker>`,
         :ref:`celery`
 
+.. envvar:: CELERY_SINGLE_PROCESS
+
+   .. versionadded:: 5.7.1
+
+    This variable can be set to ``1`` to run only one celery process. This reduces memory usage but may impact Weblate performance.
+
+    .. code-block:: yaml
+
+        environment:
+          CELERY_SINGLE_PROCESS: 1
+
+    .. seealso::
+
+        :ref:`minimal-celery`
+
 .. envvar:: WEB_WORKERS
 
     Configure how many uWSGI workers should be executed.
@@ -1888,7 +1923,7 @@ as that is user used inside the container.
 
 .. seealso::
 
-   `Docker volumes documentation <https://docs.docker.com/storage/volumes/>`_,
+   `Docker volumes documentation <https://docs.docker.com/engine/storage/volumes/>`_,
    :setting:`DATA_DIR`,
    :setting:`CACHE_DIR`
 
@@ -1965,7 +2000,7 @@ To override settings at the Docker image level instead of from the data volume:
         USER root
 
         COPY weblate_customization /usr/src/weblate_customization
-        RUN pip install --no-cache-dir /usr/src/weblate_customization
+        RUN /app/venv/bin/uv pip install --no-cache-dir /usr/src/weblate_customization
         ENV DJANGO_SETTINGS_MODULE=weblate_customization.settings
 
         USER 1000
@@ -1988,7 +2023,7 @@ To override settings at the Docker image level instead of from the data volume:
     See the `Compose file build reference`_ for details on building images from
     source when using ``docker-compose``.
 
-    .. _Compose file build reference: https://docs.docker.com/compose/compose-file/build/
+    .. _Compose file build reference: https://docs.docker.com/reference/compose-file/build/
 
 #.  Extend your custom settings module to define or redefine settings.
 

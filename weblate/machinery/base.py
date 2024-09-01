@@ -34,6 +34,7 @@ from weblate.utils.site import get_site_url
 if TYPE_CHECKING:
     from requests.auth import AuthBase
 
+    from weblate.auth.models import User
     from weblate.machinery.forms import BaseMachineryForm
     from weblate.trans.models import Unit
 
@@ -83,8 +84,8 @@ class TranslationResultDict(TypedDict, total=False):
     quality: int
     service: str
     source: str
-    # TODO: only following are actually optional, byt this can be specified
-    # in Python 3.11+
+    # TODO: only following are actually optional, but this can be specified
+    # in Python 3.11+, mark these by NotRequired
     show_quality: bool
     origin: str
     origin_url: str
@@ -415,7 +416,7 @@ class BatchMachineTranslation:
             self.uncleanup_results(replacements, result)
         return cache_key, result
 
-    def search(self, unit, text, user):
+    def search(self, unit, text, user: User):
         """Search for known translations of `text`."""
         translation = unit.translation
         try:

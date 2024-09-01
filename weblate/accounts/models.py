@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import datetime
 from datetime import timedelta
+from typing import TYPE_CHECKING, Literal
 from urllib.parse import urlparse
 
 from appconf import AppConf
@@ -23,6 +24,9 @@ from django.utils import timezone
 from django.utils.functional import cached_property
 from django.utils.timezone import now
 from django.utils.translation import get_language, gettext, gettext_lazy, pgettext_lazy
+from django_otp.plugins.otp_static.models import StaticDevice
+from django_otp.plugins.otp_totp.models import TOTPDevice
+from django_otp_webauthn.models import WebAuthnCredential
 from rest_framework.authtoken.models import Token
 from social_django.models import UserSocialAuth
 
@@ -30,7 +34,7 @@ from weblate.accounts.avatar import get_user_display
 from weblate.accounts.data import create_default_notifications
 from weblate.accounts.notifications import FREQ_CHOICES, NOTIFICATIONS, SCOPE_CHOICES
 from weblate.accounts.tasks import notify_auditlog
-from weblate.auth.models import User
+from weblate.auth.models import AuthenticatedHttpRequest, User
 from weblate.lang.models import Language
 from weblate.trans.defines import EMAIL_LENGTH
 from weblate.trans.models import Change, ComponentList
@@ -42,6 +46,11 @@ from weblate.utils.request import get_ip_address, get_user_agent
 from weblate.utils.token import get_token
 from weblate.utils.validators import WeblateURLValidator
 from weblate.wladmin.models import get_support_status
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+
+    from django_otp.models import Device
 
 
 class WeblateAccountsConf(AppConf):
@@ -173,6 +182,15 @@ ACCOUNT_ACTIVITY = {
     "donate": gettext_lazy("Semiannual support status review was displayed."),
     "team-add": gettext_lazy("User was added to the {team} team by {username}."),
     "team-remove": gettext_lazy("User was removed from the {team} team by {username}."),
+    "recovery-generate": gettext_lazy(
+        "Two-factor authentication recovery codes were generated"
+    ),
+    "recovery-show": gettext_lazy(
+        "Two-factor authentication recovery codes were viewed"
+    ),
+    "twofactor-add": gettext_lazy("Two-factor authentication added: {device}"),
+    "twofactor-remove": gettext_lazy("Two-factor authentication removed: {device}"),
+    "twofactor-login": gettext_lazy("Two-factor authentication sign in using {device}"),
 }
 # Override activity messages based on method
 ACCOUNT_ACTIVITY_METHOD = {
@@ -219,11 +237,15 @@ NOTIFY_ACTIVITY = {
     "username",
     "full_name",
     "blocked",
+    "recovery-generate",
+    "recovery-show",
+    "twofactor-add",
+    "twofactor-remove",
 }
 
 
 class AuditLogManager(models.Manager):
-    def is_new_login(self, user, address, user_agent) -> bool:
+    def is_new_login(self, user: User, address, user_agent) -> bool:
         """
         Check whether this login is coming from a new device.
 
@@ -237,7 +259,7 @@ class AuditLogManager(models.Manager):
 
         return not logins.filter(Q(address=address) | Q(user_agent=user_agent)).exists()
 
-    def create(self, user, request, activity, **params):
+    def create(self, user: User, request: AuthenticatedHttpRequest, activity, **params):
         address = get_ip_address(request)
         user_agent = get_user_agent(request)
         if activity == "login" and self.is_new_login(user, address, user_agent):
@@ -252,7 +274,7 @@ class AuditLogManager(models.Manager):
 
 
 class AuditLogQuerySet(models.QuerySet["AuditLog"]):
-    def get_after(self, user, after, activity):
+    def get_after(self, user: User, after, activity):
         """
         Get user activities of given type after another activity.
 
@@ -266,7 +288,7 @@ class AuditLogQuerySet(models.QuerySet["AuditLog"]):
             kwargs = {}
         return self.filter(user=user, activity=activity, **kwargs)
 
-    def get_past_passwords(self, user):
+    def get_past_passwords(self, user: User):
         """Get user activities with password change."""
         start = timezone.now() - datetime.timedelta(days=settings.AUTH_PASSWORD_DAYS)
         return self.filter(
@@ -343,7 +365,7 @@ class AuditLog(models.Model):
             and not self.params.get("skip_notify")
         )
 
-    def check_rate_limit(self, request) -> bool:
+    def check_rate_limit(self, request: AuthenticatedHttpRequest) -> bool:
         """Check whether the activity should be rate limited."""
         if self.activity == "failed-auth" and self.user.has_usable_password():
             failures = AuditLog.objects.get_after(self.user, "login", "failed-auth")
@@ -625,6 +647,17 @@ class Profile(models.Model):
         max_length=EMAIL_LENGTH,
     )
 
+    last_2fa = models.CharField(
+        choices=(
+            ("", "None"),
+            ("totp", "TOTP"),
+            ("webauthn", "WebAuthn"),
+        ),
+        blank=True,
+        default="",
+        max_length=15,
+    )
+
     class Meta:
         verbose_name = "User profile"
         verbose_name_plural = "User profiles"
@@ -757,7 +790,7 @@ class Profile(models.Model):
     def secondary_language_ids(self) -> set[int]:
         return set(self.secondary_languages.values_list("pk", flat=True))
 
-    def get_translation_orderer(self, request):
+    def get_translation_orderer(self, request: AuthenticatedHttpRequest):
         """Create a function suitable for ordering languages based on user preferences."""
 
         def get_translation_order(translation) -> str:
@@ -784,7 +817,7 @@ class Profile(models.Model):
 
         return get_translation_order
 
-    def fixup_profile(self, request) -> None:
+    def fixup_profile(self, request: AuthenticatedHttpRequest) -> None:
         fields = set()
         if not self.language:
             self.language = get_language()
@@ -848,8 +881,47 @@ class Profile(models.Model):
             return ""
         return settings.PRIVATE_COMMIT_EMAIL_TEMPLATE.format(
             username=self.user.username,
-            site_domain=settings.SITE_DOMAIN,
+            site_domain=settings.SITE_DOMAIN.rsplit(":", 1)[0],
         )
+
+    def _get_second_factors(self) -> Iterable[Device]:
+        backend: type[Device]
+        for backend in (StaticDevice, TOTPDevice, WebAuthnCredential):
+            yield from backend.objects.filter(user=self.user)
+
+    @cached_property
+    def second_factors(self) -> list[Device]:
+        return list(self._get_second_factors())
+
+    @cached_property
+    def second_factor_types(self) -> set(Literal["totp", "webauthn", "recovery"]):
+        from weblate.accounts.utils import get_key_type
+
+        return {get_key_type(device) for device in self.second_factors}
+
+    @property
+    def has_2fa(self) -> bool:
+        return any(
+            isinstance(device, TOTPDevice | WebAuthnCredential)
+            for device in self.second_factors
+        )
+
+    def log_2fa(self, request: AuthenticatedHttpRequest, device: Device):
+        from weblate.accounts.utils import get_key_name
+
+        # Audit log entry
+        AuditLog.objects.create(
+            self.user, request, "twofactor-login", device=get_key_name(device)
+        )
+        # Store preferred method
+
+    def get_second_factor_type(self) -> Literal["totp", "webauthn"]:
+        if self.last_2fa in self.second_factor_types:
+            return self.last_2f
+        for tested in ("webauthn", "totp"):
+            if tested in self.second_factor_types:
+                return tested
+        raise ValueError("No second factor available!")
 
 
 def set_lang_cookie(response, profile) -> None:
@@ -868,7 +940,9 @@ def set_lang_cookie(response, profile) -> None:
 
 
 @receiver(user_logged_in)
-def post_login_handler(sender, request, user, **kwargs) -> None:
+def post_login_handler(
+    sender, request: AuthenticatedHttpRequest, user: User, **kwargs
+) -> None:
     """
     Signal handler for post login.
 

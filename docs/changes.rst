@@ -1,14 +1,68 @@
-Weblate 5.7
+Weblate 5.8
 -----------
 
 Not yet released.
 
 **New features**
 
+**Improvements**
+
+**Bug fixes**
+
+**Compatibility**
+
+**Upgrading**
+
+Please follow :ref:`generic-upgrade-instructions` in order to perform update.
+
+**Contributors**
+
+.. include:: changes/contributors/5.8.rst
+
+`All changes in detail <https://github.com/WeblateOrg/weblate/milestone/122?closed=1>`__.
+
+Weblate 5.7.1
+-------------
+
+Released on August 30th 2024.
+
+**Improvements**
+
+* Updated language names to better describe different scripts and Sintic languages.
+* :ref:`addon-weblate.cleanup.generic` is now automatically installed for formats which need it to update non-translation content in the translated files.
+
+**Bug fixes**
+
+* Support for using Docker network names in automatic suggestion settings.
+* Fixed authentication using some third-party providers such as Azure.
+* Support for formal and informal Portuguese in :ref:`mt-deepl`.
+* QR code for TOTP is now black/white even in dark mode.
+* Fixed TOTP authentication when WebAuthn is also configured for the user.
+
+**Upgrading**
+
+Please follow :ref:`generic-upgrade-instructions` in order to perform update.
+
+**Contributors**
+
+.. include:: changes/contributors/5.7.1.rst
+
+`All changes in detail <https://github.com/WeblateOrg/weblate/milestone/125?closed=1>`__.
+
+Weblate 5.7
+-----------
+
+Released on August 15th 2024.
+
+**New features**
+
+* :ref:`2fa` is now supported using Passkeys, WebAuthn, authentication apps (TOTP), and recovery codes.
+* :ref:`2fa` can be enforced at the team or project level.
 * :ref:`adding-new-strings` can now create plural strings in the user interface.
 * :ref:`labels` now include description to explain them.
 * New :ref:`subscriptions` for completed translation and component.
 * :ref:`mt-openai` now supports custom models and URLs and offers rephrasing of existing strings.
+* :ref:`mt-cyrtranslit` automatic suggestion service.
 
 **Improvements**
 
@@ -18,22 +72,36 @@ Not yet released.
 * Highlight newlines in the editor.
 * :doc:`/formats/csv` better handle with with two fields only.
 * Browse mode can now be navigated using keyboard, see :ref:`keyboard`.
+* :http:get:`/api/components/(string:project)/(string:component)/credits/` and :http:get:`/api/projects/(string:project)/credits/` API endpoints for components and projects.
+* :ref:`glossary-terminology` entries in Glossary can now only be created by users with :guilabel:`Add glossary terminology` permission.
+* :ref:`check-python-brace-format` detects extra curly braces.
+* Screenshots now can be pasted from the clipboard in :ref:`screenshots`.
 
 **Bug fixes**
 
 * Accessibility of keyboard navigation.
 * :ref:`git-exporter` now works with all Git based :ref:`vcs`.
+* :ref:`check-max-size` sometimes failed to render screenshot.
 
 **Compatibility**
 
 * Weblate now uses mistletoe instead of misaka as a Markdown renderer.
 * :ref:`csp` is now stricter what might block third-party customizations.
+* Monolingual formats no longer copy comments from :ref:`component-template` when adding strings to translation.
 * Dropped support for Amagama in :ref:`machine-translation-setup` as the service is no longer maintained.
 * Default value for :setting:`SENTRY_SEND_PII` was changed.
+* Translation credit reports in the JSON format now follows a different format for entries.
 
 **Upgrading**
 
 Please follow :ref:`generic-upgrade-instructions` in order to perform update.
+
+* There are several changes in :file:`settings_example.py`, most notable are the new settings for :ref:`2fa` and changes in ``INSTALLED_APPS``, ``SOCIAL_AUTH_PIPELINE`` and ``MIDDLEWARE``; please adjust your settings accordingly.
+* :setting:`ENABLE_HTTPS` is now required for WebAuthn support. If you cannot use HTTPS, please silence related check as described in :setting:`ENABLE_HTTPS` documentation.
+
+**Contributors**
+
+.. include:: changes/contributors/5.7.rst
 
 `All changes in detail <https://github.com/WeblateOrg/weblate/milestone/116?closed=1>`__.
 

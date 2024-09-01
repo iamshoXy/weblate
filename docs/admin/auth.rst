@@ -194,7 +194,7 @@ You need to register an application on Bitbucket and then tell Weblate all its s
 Google OAuth 2
 ~~~~~~~~~~~~~~
 
-To use Google OAuth 2, you need to register an application on
+To use Google OAuth 2, you need to register an application at
 <https://console.developers.google.com/> and enable the Google+ API.
 
 The redirect URL is ``https://WEBLATE SERVER/accounts/complete/google-oauth2/``
@@ -254,7 +254,7 @@ The redirect URL is ``https://WEBLATE SERVER/accounts/complete/facebook/``
 GitLab OAuth 2
 ~~~~~~~~~~~~~~
 
-For using GitLab OAuth 2, you need to register an application on
+For using GitLab OAuth 2, you need to register an application at
 <https://gitlab.com/profile/applications>.
 
 The redirect URL is ``https://WEBLATE SERVER/accounts/complete/gitlab/`` and
@@ -282,6 +282,44 @@ ensure you mark the `read_user` scope.
 .. seealso::
 
    :doc:`psa:backends/gitlab`
+
+.. _gitea_auth:
+
+Gitea OAuth 2
+~~~~~~~~~~~~~~
+
+For using Gitea OAuth 2, you need to register an application at
+``https://GITEA SERVER/user/settings/applications``.
+
+The redirect URL is ``https://WEBLATE SERVER/accounts/complete/gitea/``.
+
+.. code-block:: python
+
+    # Authentication configuration
+    AUTHENTICATION_BACKENDS = (
+        "social_core.backends.gitea.GiteaOAuth2",
+        "social_core.backends.email.EmailAuth",
+        "weblate.accounts.auth.WeblateUserBackend",
+    )
+
+    # Social auth backends setup
+    SOCIAL_AUTH_GITEA_KEY = ""
+    SOCIAL_AUTH_GITEA_SECRET = ""
+
+    # If you are using your own Gitea
+    SOCIAL_AUTH_GITEA_API_URL = "https://gitea.example.com/"
+
+.. include:: /snippets/oauth-site.rst
+
+.. note::
+
+   The configuration above also works with Forgejo;
+   for an example of production deployment with Forgejo,
+   see `Codeberg Translate <http://translate.codeberg.org>`_
+
+.. seealso::
+
+   :doc:`psa:backends/gitea`
 
 .. _azure-auth:
 
@@ -344,7 +382,7 @@ You will need following:
 Slack
 ~~~~~
 
-For using Slack OAuth 2, you need to register an application on
+For using Slack OAuth 2, you need to register an application at
 <https://api.slack.com/apps>.
 
 The redirect URL is ``https://WEBLATE SERVER/accounts/complete/slack/``.
@@ -737,3 +775,42 @@ there is any) into :setting:`django:INSTALLED_APPS`:
     INSTALLED_APPS += (
         # Install authentication app here
     )
+
+
+.. _2fa:
+
+Two-factor authentication
+=========================
+
+.. versionadded:: 5.7
+
+.. hint::
+
+   Two-factor authentication adds another layer of security to your account by requiring more than just a password to sign in.
+
+Weblate supports the following second factors:
+
+Security keys (WebAuthn)
+   Both, Passkeys and security keys are supported.
+
+   Passkeys validate your identity using touch, facial recognition, a device password, or a PIN as they include user verification.
+
+   Security keys are WebAuthn credentials that can only be used as a second factor of authentication, and these only validate user presence.
+
+Authenticator app (TOTP)
+   Authenticator apps and browser extensions like Aegis, Bitwarden, Google Authenticator,
+   1Password, Authy, Microsoft Authenticator, etc. generate one-time passwords
+   that are used as a second factor to verify your identity when prompted
+   during sign-in.
+
+Recovery codes
+   Recovery codes can be used to access your account if you lose access to your device and cannot receive two-factor authentication codes.
+
+   Keep your recovery codes as safe as your password. We recommend saving them with a password manager such as Bitwarden, 1Password, Authy, or Keeper.
+
+Each user can configure this in :ref:`profile-account` and second factor will
+be required to sign in addition to the existing authentication method.
+
+This can be enforced for users at the project (see :ref:`project-enforced_2fa`) or team level.
+
+The permissions of a team with enforced two-factor authentication won't be applied to users who do not have it configured.

@@ -176,6 +176,12 @@ class TTKitUnit(TranslationUnit):
             flags.merge(self.template.xmlelement)
         return flags.format()
 
+    def clone_template(self) -> None:
+        super().clone_template()
+
+        # do not copy notes from the template (#11133)
+        self.unit.removenotes()
+
     def untranslate(self, language) -> None:
         target: str | list[str]
         target = [""] * language.plural.number if self.mainunit.hasplural() else ""
@@ -1005,7 +1011,11 @@ class CSVUnit(MonolingualSimpleUnit):
 
     def set_target(self, target: str | list[str]) -> None:
         super().set_target(target)
-        if self.template is not None and not self.parent.is_template:
+        if (
+            self.template is not None
+            and not self.parent.is_template
+            and "target" not in self.parent.store.fieldnames
+        ):
             # Update source for bilingual as CSV fields can contain just source
             self.unit.source = self.unit.target
 
@@ -1074,6 +1084,7 @@ class BasePoFormat(TTKitFormat):
     loader = pofile
     plural_preference = None
     supports_plural: bool = True
+    store: pofile
 
     @classmethod
     def get_plural(cls, language, store=None):

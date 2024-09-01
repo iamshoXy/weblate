@@ -64,8 +64,18 @@ jobs:
       DJANGO_SETTINGS_MODULE: weblate.settings_test
       PYTHONWARNINGS: default,ignore:unclosed:ResourceWarning
       PYTHONUNBUFFERED: 1
+      # Configure a constant location for the uv cache
+      UV_CACHE_DIR: /tmp/.uv-cache
     steps:
     - uses: actions/checkout@v4
+    - name: Restore uv cache
+      uses: actions/cache@v4
+      with:
+        path: /tmp/.uv-cache
+        key: uv-${{ runner.os }}-${{ hashFiles('pyproject.toml') }}
+        restore-keys: |
+          uv-${{ runner.os }}-${{ hashFiles('pyproject.toml') }}
+          uv-${{ runner.os }}
     - name: Start services
       run: ./ci/services-up ${{ matrix.database }}
     - name: Install apt dependencies
@@ -91,7 +101,9 @@ jobs:
     - name: Demo import
       run: coverage run ./manage.py import_demo
     - name: Test with Django
-      run: coverage run ./manage.py test -v2
+      run: |
+        pytest --junitxml=junit.xml --cov=weblate weblate
+        cp .coverage .coverage.pytest
     - name: Test wsgi startup
       env:
         PYTHONPATH: .
@@ -105,6 +117,11 @@ jobs:
         token: ${{secrets.CODECOV_TOKEN}}
         flags: unittests
         name: Tests py${{ matrix.python-version }}, ${{ matrix.database }}, ${{ matrix.requirements }} deps
+    - name: Upload test results to Codecov
+      if: ${{ !cancelled() }}
+      uses: codecov/test-results-action@v1
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
     - name: DeepSource
       uses: deepsourcelabs/test-coverage-action@v1.1.2
       if: ${{ github.event_name == 'push' }}
@@ -112,6 +129,8 @@ jobs:
         key: python
         coverage-file: coverage.xml
         dsn: ${{ secrets.DEEPSOURCE_DSN }}
+    - name: Minimize uv cache
+      run: uv cache prune --ci
     - name: Stop services
       if: always()
       run: ./ci/services-down ${{ matrix.database }}
