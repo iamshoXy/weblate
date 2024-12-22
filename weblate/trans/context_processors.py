@@ -51,19 +51,6 @@ CONTEXT_SETTINGS = [
 CONTEXT_APPS = ["billing", "legal", "gitexport"]
 
 
-def add_error_logging_context(context) -> None:
-    if (
-        hasattr(settings, "ROLLBAR")
-        and "client_token" in settings.ROLLBAR
-        and "environment" in settings.ROLLBAR
-    ):
-        context["rollbar_token"] = settings.ROLLBAR["client_token"]
-        context["rollbar_environment"] = settings.ROLLBAR["environment"]
-    else:
-        context["rollbar_token"] = None
-        context["rollbar_environment"] = None
-
-
 def add_settings_context(context) -> None:
     for name in CONTEXT_SETTINGS:
         context[name.lower()] = getattr(settings, name, None)
@@ -121,8 +108,13 @@ def weblate_context(request: AuthenticatedHttpRequest):
     """Context processor to inject various useful variables into context."""
     if url_has_allowed_host_and_scheme(request.GET.get("next", ""), allowed_hosts=None):
         login_redirect_url = request.GET["next"]
-    else:
+    elif request.resolver_match is None or (
+        not request.resolver_match.view_name.startswith("social:")
+        and request.resolver_match.view_name != "logout"
+    ):
         login_redirect_url = request.get_full_path()
+    else:
+        login_redirect_url = ""
 
     # Load user translations if user is authenticated
     watched_projects = None
@@ -176,7 +168,6 @@ def weblate_context(request: AuthenticatedHttpRequest):
         "theme": theme,
     }
 
-    add_error_logging_context(context)
     add_settings_context(context)
     add_optional_context(context)
 

@@ -54,7 +54,7 @@ SPLIT_RE = re.compile(
     re.IGNORECASE,
 )
 
-EMOJI_RE = re.compile("[\U00002600-\U000027bf]|[\U0001f000-\U0001fffd]")
+EMOJI_RE = re.compile(r"[\U00002600-\U000027bf]|[\U0001f000-\U0001fffd]")
 
 # Docbook tags to ignore
 DB_TAGS = ("screen", "indexterm", "programlisting")
@@ -66,7 +66,7 @@ def strip_format(msg, flags):
 
     These are quite often not changed by translators.
     """
-    for format_flag, (regex, _is_position_based) in FLAG_RULES.items():
+    for format_flag, (regex, _is_position_based, _extract_string) in FLAG_RULES.items():
         if format_flag in flags:
             return regex.sub("", msg)
 

@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import datetime
+import re
 from datetime import timedelta
 from typing import TYPE_CHECKING, Literal
 from urllib.parse import urlparse
@@ -22,6 +23,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.utils import timezone
 from django.utils.functional import cached_property
+from django.utils.html import format_html
 from django.utils.timezone import now
 from django.utils.translation import get_language, gettext, gettext_lazy, pgettext_lazy
 from django_otp.plugins.otp_static.models import StaticDevice
@@ -29,10 +31,15 @@ from django_otp.plugins.otp_totp.models import TOTPDevice
 from django_otp_webauthn.models import WebAuthnCredential
 from rest_framework.authtoken.models import Token
 from social_django.models import UserSocialAuth
+from unidecode import unidecode
 
 from weblate.accounts.avatar import get_user_display
 from weblate.accounts.data import create_default_notifications
-from weblate.accounts.notifications import FREQ_CHOICES, NOTIFICATIONS, SCOPE_CHOICES
+from weblate.accounts.notifications import (
+    NOTIFICATIONS,
+    NotificationFrequency,
+    NotificationScope,
+)
 from weblate.accounts.tasks import notify_auditlog
 from weblate.auth.models import AuthenticatedHttpRequest, User
 from weblate.lang.models import Language
@@ -41,10 +48,11 @@ from weblate.trans.models import Change, ComponentList
 from weblate.utils import messages
 from weblate.utils.decorators import disable_for_loaddata
 from weblate.utils.fields import EmailField
+from weblate.utils.html import mail_quote_value
 from weblate.utils.render import validate_editor
 from weblate.utils.request import get_ip_address, get_user_agent
 from weblate.utils.token import get_token
-from weblate.utils.validators import WeblateURLValidator
+from weblate.utils.validators import EMAIL_BLACKLIST, WeblateURLValidator
 from weblate.wladmin.models import get_support_status
 
 if TYPE_CHECKING:
@@ -80,6 +88,8 @@ class WeblateAccountsConf(AppConf):
 
     # Captcha for registrations
     REGISTRATION_CAPTCHA = True
+
+    ALTCHA_MAX_NUMBER = 1_000_000
 
     REGISTRATION_HINTS = {}
 
@@ -124,13 +134,48 @@ class WeblateAccountsConf(AppConf):
         prefix = ""
 
 
+# This is essentially a part for django.core.validators.EmailValidator
+DOT_ATOM_RE = re.compile(
+    r"^[-!#$%&'*+/=?^_`{}|~0-9A-Z]+(\.[-!#$%&'*+/=?^_`{}|~0-9A-Z]+)*\Z", re.IGNORECASE
+)
+
+
+def format_private_email(username: str, user_id: int) -> str:
+    if not settings.PRIVATE_COMMIT_EMAIL_TEMPLATE:
+        return ""
+    if username:
+        if username.endswith(".") or ".." in username:
+            # Remove problematic docs
+            username = username.replace(".", "_")
+        if not DOT_ATOM_RE.match(username):
+            # Remove unicode
+            username = unidecode(username)
+        if not DOT_ATOM_RE.match(username) or EMAIL_BLACKLIST.match(username):
+            username = ""
+    if not username:
+        username = f"user-{user_id}"
+    return settings.PRIVATE_COMMIT_EMAIL_TEMPLATE.format(
+        username=username.lower(),
+        site_domain=settings.SITE_DOMAIN.rsplit(":", 1)[0],
+    )
+
+
+class SubscriptionQuerySet(models.QuerySet["Subscription"]):
+    def order(self):
+        """Ordering in project scope by priority."""
+        return self.order_by("user", "scope")
+
+    def prefetch(self):
+        return self.prefetch_related("component", "project")
+
+
 class Subscription(models.Model):
     user = models.ForeignKey(User, on_delete=models.deletion.CASCADE)
     notification = models.CharField(
         choices=[n.get_choice() for n in NOTIFICATIONS], max_length=100
     )
-    scope = models.IntegerField(choices=SCOPE_CHOICES)
-    frequency = models.IntegerField(choices=FREQ_CHOICES)
+    scope = models.IntegerField(choices=NotificationScope.choices)
+    frequency = models.IntegerField(choices=NotificationFrequency.choices)
     project = models.ForeignKey(
         "trans.Project", on_delete=models.deletion.CASCADE, null=True
     )
@@ -139,10 +184,18 @@ class Subscription(models.Model):
     )
     onetime = models.BooleanField(default=False)
 
+    objects = SubscriptionQuerySet.as_manager()
+
     class Meta:
-        unique_together = [("notification", "scope", "project", "component", "user")]
         verbose_name = "Notification subscription"
         verbose_name_plural = "Notification subscriptions"
+        constraints = [
+            models.UniqueConstraint(
+                name="accounts_subscription_notification_unique",
+                fields=("notification", "scope", "project", "component", "user"),
+                nulls_distinct=False,
+            ),
+        ]
 
     def __str__(self) -> str:
         return f"{self.user.username}:{self.get_scope_display()},{self.get_notification_display()} ({self.project},{self.component})"
@@ -167,7 +220,7 @@ ACCOUNT_ACTIVITY = {
     "locked": gettext_lazy("Account locked due to many failed sign in attempts."),
     "removed": gettext_lazy("Account and all private data removed."),
     "removal-request": gettext_lazy("Account removal confirmation sent to {email}."),
-    "tos": gettext_lazy("Agreement with Terms of Service {date}."),
+    "tos": gettext_lazy("Agreement with General Terms and Conditions {date}."),
     "invited": gettext_lazy("Invited to {site_title} by {username}."),
     "accepted": gettext_lazy("Accepted invitation from {username}."),
     "trial": gettext_lazy("Started trial period."),
@@ -259,7 +312,9 @@ class AuditLogManager(models.Manager):
 
         return not logins.filter(Q(address=address) | Q(user_agent=user_agent)).exists()
 
-    def create(self, user: User, request: AuthenticatedHttpRequest, activity, **params):
+    def create(
+        self, user: User, request: AuthenticatedHttpRequest | None, activity, **params
+    ):
         address = get_ip_address(request)
         user_agent = get_user_agent(request)
         if activity == "login" and self.is_new_login(user, address, user_agent):
@@ -334,10 +389,18 @@ class AuditLog(models.Model):
         result = {
             "site_title": settings.SITE_TITLE,
         }
-        result.update(self.params)
-        if "method" in result:
-            # The gettext is here for legacy entries which contained method name
-            result["method"] = gettext(get_auth_name(result["method"]))
+        for name, value in self.params.items():
+            if value is None:
+                value = format_html("<em>{}</em>", value)
+            elif name in {"old", "new", "name", "email", "username"}:
+                value = format_html("<code>{}</code>", mail_quote_value(value))
+            elif name == "method":
+                value = format_html("<strong>{}</strong>", get_auth_name(value))
+            elif name in {"device", "project", "site_title"}:
+                value = format_html("<strong>{}</strong>", mail_quote_value(value))
+
+            result[name] = value
+
         return result
 
     @admin.display(description=gettext_lazy("Account activity"))
@@ -348,7 +411,7 @@ class AuditLog(models.Model):
             message = ACCOUNT_ACTIVITY_METHOD[method][activity]
         else:
             message = ACCOUNT_ACTIVITY[activity]
-        return message.format(**self.get_params())
+        return format_html(message, **self.get_params())
 
     def get_extra_message(self):
         if self.activity in EXTRA_MESSAGES:
@@ -665,7 +728,7 @@ class Profile(models.Model):
     def __str__(self) -> str:
         return self.user.username
 
-    def get_absolute_url(self):
+    def get_absolute_url(self) -> str:
         return self.user.get_absolute_url()
 
     def get_user_display(self):
@@ -877,12 +940,7 @@ class Profile(models.Model):
         return email
 
     def get_site_commit_email(self) -> str:
-        if not settings.PRIVATE_COMMIT_EMAIL_TEMPLATE:
-            return ""
-        return settings.PRIVATE_COMMIT_EMAIL_TEMPLATE.format(
-            username=self.user.username,
-            site_domain=settings.SITE_DOMAIN.rsplit(":", 1)[0],
-        )
+        return format_private_email(self.user.username, self.user.pk)
 
     def _get_second_factors(self) -> Iterable[Device]:
         backend: type[Device]
@@ -894,7 +952,7 @@ class Profile(models.Model):
         return list(self._get_second_factors())
 
     @cached_property
-    def second_factor_types(self) -> set(Literal["totp", "webauthn", "recovery"]):
+    def second_factor_types(self) -> set[Literal["totp", "webauthn", "recovery"]]:
         from weblate.accounts.utils import get_key_type
 
         return {get_key_type(device) for device in self.second_factors}
@@ -907,21 +965,26 @@ class Profile(models.Model):
         )
 
     def log_2fa(self, request: AuthenticatedHttpRequest, device: Device):
-        from weblate.accounts.utils import get_key_name
+        from weblate.accounts.utils import get_key_name, get_key_type
 
         # Audit log entry
         AuditLog.objects.create(
             self.user, request, "twofactor-login", device=get_key_name(device)
         )
-        # Store preferred method
+        # Store preferred method (skipping recovery codes)
+        device_type = get_key_type(device)
+        if device_type not in {self.last_2fa, "recovery"}:
+            self.last_2fa = device_type
+            self.save(update_fields=["last_2fa"])
 
     def get_second_factor_type(self) -> Literal["totp", "webauthn"]:
         if self.last_2fa in self.second_factor_types:
-            return self.last_2f
+            return self.last_2fa
         for tested in ("webauthn", "totp"):
             if tested in self.second_factor_types:
                 return tested
-        raise ValueError("No second factor available!")
+        msg = "No second factor available!"
+        raise ValueError(msg)
 
 
 def set_lang_cookie(response, profile) -> None:
@@ -1006,5 +1069,5 @@ def create_profile_callback(sender, instance, created=False, **kwargs) -> None:
         # Create profile
         instance.profile = Profile.objects.create(user=instance)
         # Create subscriptions
-        if not instance.is_anonymous:
+        if not instance.is_anonymous and not instance.is_bot:
             create_default_notifications(instance)

@@ -38,7 +38,6 @@ class DeepLTranslation(
         "pt@formal": "pt-pt@formal",
         "pt@informal": "pt-pt@informal",
     }
-    force_uncleanup = True
     hightlight_syntax = True
     settings_form = DeepLMachineryForm
     glossary_count_limit = 1000
@@ -115,6 +114,8 @@ class DeepLTranslation(
             "tag_handling": "xml",
             "ignore_tags": ["x"],
         }
+        if context := self.settings.get("context", ""):
+            params["context"] = context
         if language.endswith("@FORMAL"):
             params["target_lang"] = language[:-7]
             params["formality"] = "more"
@@ -143,7 +144,7 @@ class DeepLTranslation(
         return result
 
     def format_replacement(
-        self, h_start: int, h_end: int, h_text: str, h_kind: None | Unit
+        self, h_start: int, h_end: int, h_text: str, h_kind: Unit | None
     ) -> str:
         """Generate a single replacement."""
         return f'<x id="{h_start}"></x>'

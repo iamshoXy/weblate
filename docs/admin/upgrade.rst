@@ -23,7 +23,7 @@ Once all requirements are installed or upgraded, ensure your
 :file:`settings_example.py` for correct values).
 
 Always check :ref:`version-specific-instructions` before upgrading. If you are
-skipping any version(s), be sure to follow instructions for all versions you are
+skipping any versions, be sure to follow instructions for all versions you are
 skipping during such upgrade. It's sometimes better to upgrade gradually to
 an intermediate version to ensure a smooth migration. Upgrading across multiple
 releases should work, but is not as well tested as single version upgrades!
@@ -42,19 +42,19 @@ releases should work, but is not as well tested as single version upgrades!
 
    .. code-block:: sh
 
-      pip install -U "Weblate[all]==version"
+      uv pip install -U "weblate[all]==version"
 
    Or, if you just want to get the latest released version:
 
    .. code-block:: sh
 
-      pip install -U "Weblate[all]"
+      uv pip install -U "weblate[all]"
 
    If you don't want to install all of the optional dependencies do:
 
    .. code-block:: sh
 
-      pip install -U Weblate
+      uv pip install -U weblate
 
    Using Git checkout, you need to fetch new source code and update your installation:
 
@@ -63,11 +63,11 @@ releases should work, but is not as well tested as single version upgrades!
         cd weblate-src
         git pull
         # Update Weblate inside your virtualenv
-        . ~/weblate-env/bin/pip install -e '.[all]'
+        . ~/weblate-env/bin/uv pip install -e '.[all]'
         # Install dependencies directly when not using virtualenv
-        pip install --upgrade -e .
+        uv pip install --upgrade -e .
         # Install optional dependencies directly when not using virtualenv
-        pip install --upgrade -e '.[all]'
+        uv pip install --upgrade -e '.[all]'
 
 #. New Weblate releases might have new :ref:`python-deps`, check if they cover
    the features you want.
@@ -140,7 +140,7 @@ supported and will break.
 Migrating from other databases to PostgreSQL
 --------------------------------------------
 
-If you are not running Weblate with a different database than PostgreSQL,
+If you are running Weblate with a different database than PostgreSQL,
 consider migrating to PostgreSQL for better performance by doing the following steps.
 Remember to stop both, the web and Celery servers beforehand,
 otherwise you might end up with inconsistent data.
@@ -186,7 +186,7 @@ and tweak it to match your setup:
    .. code-block:: postgresql
 
        LOAD DATABASE
-            FROM      mysql://weblate:password@localhost/weblate
+            FROM mysql://weblate:password@localhost/weblate
             INTO postgresql://weblate:password@localhost/weblate
 
        WITH include no drop, truncate, create no tables, create no indexes, no foreign keys, disable triggers, reset sequences, data only

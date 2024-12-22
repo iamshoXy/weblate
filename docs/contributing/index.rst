@@ -53,8 +53,9 @@ Please respect these guidelines while writing:
     2. Once the rewrite is reviewed, polished, and merged, change the structure of the paragraphs in another PR.
 
 Documentation can be also edited and built locally, the Python requirements are
-in `docs/requirements.txt`. You will also need :program:`graphviz` to build the
-documentation.
+in the ``docs`` dependency group in :file:`pyproject.toml`.
+
+You will also need :program:`graphviz` to build the documentation.
 
 .. hint::
 
@@ -86,13 +87,10 @@ You can join the community in `GitHub discussions <https://github.com/WeblateOrg
 Funding Weblate development
 ---------------------------
 
-You can boost Weblate’s development on the `donate page`_. Funds collected
-there are used to enable gratis hosting for libre software projects and further
-development of Weblate.
-Please check the `donate page`_ for options, such
-as funding goals and the rewards you get as a proud funder.
+You can boost Weblate’s development by donating. Funds collected on donations
+are used to enable gratis hosting for libre software projects and to fund the
+ecosystem Weblate relies on. Please check the `donate page
+<https://weblate.org/donate/>`_ for options, such as funding goals and the
+rewards you get as a proud funder.
 
 .. include:: ../../BACKERS.rst
-
-
-.. _donate page: https://weblate.org/donate/

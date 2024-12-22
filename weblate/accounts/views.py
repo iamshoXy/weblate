@@ -22,9 +22,9 @@ from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.contrib.auth import login as auth_login
 from django.contrib.auth import logout as auth_logout
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.views import LoginView, LogoutView, RedirectURLMixin
+from django.contrib.auth.views import LoginView, RedirectURLMixin
 from django.core.exceptions import ObjectDoesNotExist, PermissionDenied, ValidationError
-from django.core.mail.message import EmailMultiAlternatives
+from django.core.mail.message import EmailMessage
 from django.core.signing import (
     BadSignature,
     SignatureExpired,
@@ -70,12 +70,12 @@ from django_otp_webauthn.views import (
     CompleteCredentialAuthenticationView,
 )
 from rest_framework.authtoken.models import Token
-from rest_framework.permissions import AllowAny
 from social_core.actions import do_auth
 from social_core.backends.open_id import OpenIdAuth
 from social_core.exceptions import (
     AuthAlreadyAssociated,
     AuthCanceled,
+    AuthException,
     AuthFailed,
     AuthForbidden,
     AuthMissingParameter,
@@ -89,7 +89,6 @@ from social_django.views import complete, disconnect
 
 from weblate.accounts.avatar import get_avatar_image, get_fallback_avatar_url
 from weblate.accounts.forms import (
-    CaptchaForm,
     CommitForm,
     ContactForm,
     DashboardSettingsForm,
@@ -117,14 +116,10 @@ from weblate.accounts.forms import (
 )
 from weblate.accounts.models import AuditLog, Subscription, VerifiedEmail
 from weblate.accounts.notifications import (
-    FREQ_INSTANT,
-    FREQ_NONE,
     NOTIFICATIONS,
-    SCOPE_ADMIN,
-    SCOPE_ALL,
-    SCOPE_COMPONENT,
-    SCOPE_PROJECT,
-    SCOPE_WATCHED,
+    NotificationFrequency,
+    NotificationScope,
+    get_email_headers,
     send_notification_email,
 )
 from weblate.accounts.pipeline import EmailAlreadyAssociated, UsernameAlreadyAssociated
@@ -142,6 +137,7 @@ from weblate.auth.models import (
     AuthenticatedHttpRequest,
     Invitation,
     User,
+    get_anonymous,
     get_auth_keys,
 )
 from weblate.auth.utils import format_address
@@ -157,6 +153,7 @@ from weblate.utils.request import get_ip_address, get_user_agent
 from weblate.utils.stats import prefetch_stats
 from weblate.utils.token import get_token
 from weblate.utils.views import get_paginator, parse_path
+from weblate.utils.zammad import ZammadError, submit_zammad_ticket
 
 if TYPE_CHECKING:
     from weblate.auth.models import AuthenticatedHttpRequest
@@ -235,14 +232,24 @@ class EmailSentView(TemplateView):
 
 def mail_admins_contact(
     request: AuthenticatedHttpRequest,
+    *,
     subject: str,
     message: str,
     context: dict[str, Any],
-    sender: str,
+    name: str,
+    email: str,
     to: list[str],
 ) -> None:
     """Send a message to the admins, as defined by the ADMINS setting."""
-    LOGGER.info("contact form from %s", sender)
+    LOGGER.info("contact form from %s", email)
+    subject = f"{settings.EMAIL_SUBJECT_PREFIX}{subject}"
+    body = MESSAGE_TEMPLATE.format(
+        message=message % context,
+        address=get_ip_address(request),
+        agent=get_user_agent(request),
+        username=request.user.username,
+    )
+
     if not to and settings.ADMINS:
         to = [a[1] for a in settings.ADMINS]
     elif not settings.ADMINS:
@@ -250,31 +257,42 @@ def mail_admins_contact(
         LOGGER.error("ADMINS not configured, cannot send message")
         return
 
-    if settings.CONTACT_FORM == "reply-to":
-        headers = {"Reply-To": sender}
-        from_email = None
+    if settings.ZAMMAD_URL and len(to) == 1 and to[0].endswith("@weblate.org"):
+        try:
+            submit_zammad_ticket(
+                title=subject,
+                body=body,
+                name=name,
+                email=email,
+            )
+        except ZammadError as error:
+            messages.error(request, str(error))
+        else:
+            messages.success(
+                request,
+                gettext("Your request has been sent, you will shortly hear from us."),
+            )
+
     else:
-        from_email = sender
-        headers = None
+        headers = get_email_headers("contact")
+        sender = format_address(name, email)
 
-    mail = EmailMultiAlternatives(
-        subject=f"{settings.EMAIL_SUBJECT_PREFIX}{subject % context}",
-        body=MESSAGE_TEMPLATE.format(
-            message=message % context,
-            address=get_ip_address(request),
-            agent=get_user_agent(request),
-            username=request.user.username,
-        ),
-        to=to,
-        from_email=from_email,
-        headers=headers,
-    )
+        if settings.CONTACT_FORM == "reply-to":
+            headers["Reply-To"] = sender
+            from_email = to[0]
+        else:
+            from_email = sender
 
-    mail.send(fail_silently=False)
+        mail = EmailMessage(
+            subject=subject, body=body, to=to, from_email=from_email, headers=headers
+        )
 
-    messages.success(
-        request, gettext("Your request has been sent, you will shortly hear from us.")
-    )
+        mail.send(fail_silently=False)
+
+        messages.success(
+            request,
+            gettext("Your request has been sent, you will shortly hear from us."),
+        )
 
 
 def redirect_profile(page: str | None = None):
@@ -286,24 +304,31 @@ def redirect_profile(page: str | None = None):
 
 def get_notification_forms(request: AuthenticatedHttpRequest):
     user = request.user
-    subscriptions: dict[tuple[int, int, int], dict[str, int]] = defaultdict(dict)
-    initials: dict[tuple[int, int, int], dict[str, Any]] = {}
+    subscriptions: dict[tuple[NotificationScope, int, int], dict[str, int]] = (
+        defaultdict(dict)
+    )
+    initials: dict[tuple[NotificationScope, int, int], dict[str, Any]] = {}
+    key: tuple[NotificationScope, int, int]
 
     # Ensure watched, admin and all scopes are visible
-    for needed in (SCOPE_WATCHED, SCOPE_ADMIN, SCOPE_ALL):
+    for needed in (
+        NotificationScope.SCOPE_WATCHED,
+        NotificationScope.SCOPE_ADMIN,
+        NotificationScope.SCOPE_ALL,
+    ):
         key = (needed, -1, -1)
         subscriptions[key] = {}
         initials[key] = {"scope": needed, "project": None, "component": None}
-    active = (SCOPE_WATCHED, -1, -1)
+    active = (NotificationScope.SCOPE_WATCHED, -1, -1)
 
     # Include additional scopes from request
     if "notify_project" in request.GET:
         try:
             project = user.allowed_projects.get(pk=request.GET["notify_project"])
-            active = key = (SCOPE_PROJECT, project.pk, -1)
+            active = key = (NotificationScope.SCOPE_PROJECT, project.pk, -1)
             subscriptions[key] = {}
             initials[key] = {
-                "scope": SCOPE_PROJECT,
+                "scope": NotificationScope.SCOPE_PROJECT,
                 "project": project,
                 "component": None,
             }
@@ -314,10 +339,10 @@ def get_notification_forms(request: AuthenticatedHttpRequest):
             component = Component.objects.filter_access(user).get(
                 pk=request.GET["notify_component"],
             )
-            active = key = (SCOPE_COMPONENT, -1, component.pk)
+            active = key = (NotificationScope.SCOPE_COMPONENT, -1, component.pk)
             subscriptions[key] = {}
             initials[key] = {
-                "scope": SCOPE_COMPONENT,
+                "scope": NotificationScope.SCOPE_COMPONENT,
                 "component": component,
             }
         except (ObjectDoesNotExist, ValueError):
@@ -518,39 +543,39 @@ def get_initial_contact(request: AuthenticatedHttpRequest):
 
 @never_cache
 def contact(request: AuthenticatedHttpRequest):
-    captcha = None
-    show_captcha = settings.REGISTRATION_CAPTCHA and not request.user.is_authenticated
-
     if request.method == "POST":
-        form = ContactForm(request.POST)
-        if show_captcha:
-            captcha = CaptchaForm(request, form, request.POST)
+        form = ContactForm(
+            request=request,
+            hide_captcha=request.user.is_authenticated,
+            data=request.POST,
+        )
         if not check_rate_limit("message", request):
             messages.error(
                 request, gettext("Too many messages sent, please try again later.")
             )
-        elif (captcha is None or captcha.is_valid()) and form.is_valid():
+        elif form.is_valid():
             mail_admins_contact(
                 request,
-                "%(subject)s",
-                CONTACT_TEMPLATE,
-                form.cleaned_data,
-                format_address(form.cleaned_data["name"], form.cleaned_data["email"]),
-                settings.ADMINS_CONTACT,
+                subject=form.cleaned_data["subject"],
+                message=CONTACT_TEMPLATE,
+                context=form.cleaned_data,
+                name=form.cleaned_data["name"],
+                email=form.cleaned_data["email"],
+                to=settings.ADMINS_CONTACT,
             )
             return redirect("home")
     else:
         initial = get_initial_contact(request)
         if request.GET.get("t") in CONTACT_SUBJECTS:
             initial["subject"] = CONTACT_SUBJECTS[request.GET["t"]]
-        form = ContactForm(initial=initial)
-        if show_captcha:
-            captcha = CaptchaForm(request)
+        form = ContactForm(
+            request=request, hide_captcha=request.user.is_authenticated, initial=initial
+        )
 
     return render(
         request,
         "accounts/contact.html",
-        {"form": form, "captcha_form": captcha, "title": gettext("Contact")},
+        {"form": form, "title": gettext("Contact")},
     )
 
 
@@ -759,7 +784,8 @@ def user_avatar(request: AuthenticatedHttpRequest, user: str, size: int):
         128,
     )
     if size not in allowed_sizes:
-        raise Http404(f"Not supported size: {size}")
+        msg = f"Not supported size: {size}"
+        raise Http404(msg)
 
     avatar_user = get_object_or_404(User, username=user)
 
@@ -786,7 +812,33 @@ def redirect_single(request: AuthenticatedHttpRequest, backend: str):
     )
 
 
-class WeblateLoginView(LoginView):
+class BaseLoginView(LoginView):
+    def form_invalid(self, form):
+        rotate_token(self.request)
+        return super().form_invalid(form)
+
+    def form_valid(self, form):
+        """Security check complete. Log the user in."""
+        user = form.get_user()
+        if user.profile.has_2fa:
+            # Store session indication for second factor
+            self.request.session[SESSION_SECOND_FACTOR_USER] = (user.id, user.backend)
+            # Redirect to second factor login
+            redirect_to = self.request.POST.get(
+                self.redirect_field_name, self.request.GET.get(self.redirect_field_name)
+            )
+            login_params: dict[str, str] = {}
+            if redirect_to:
+                login_params[self.redirect_field_name] = redirect_to
+            login_url = reverse(
+                "2fa-login", kwargs={"backend": user.profile.get_second_factor_type()}
+            )
+            return HttpResponseRedirect(f"{login_url}?{urlencode(login_params)}")
+        auth_login(self.request, user)
+        return HttpResponseRedirect(self.get_success_url())
+
+
+class WeblateLoginView(BaseLoginView):
     """Login handler, just a wrapper around standard Django login."""
 
     form_class = LoginForm  # type: ignore[assignment]
@@ -814,48 +866,32 @@ class WeblateLoginView(LoginView):
 
         return super().dispatch(request, *args, **kwargs)
 
-    def form_invalid(self, form):
-        rotate_token(self.request)
-        return super().form_invalid(form)
 
-    def form_valid(self, form):
-        """Security check complete. Log the user in."""
-        user = form.get_user()
-        if user.profile.has_2fa:
-            # Store session indication for second factor
-            self.request.session[SESSION_SECOND_FACTOR_USER] = (user.id, user.backend)
-            # Redirect to second factor login
-            redirect_to = self.request.POST.get(
-                self.redirect_field_name, self.request.GET.get(self.redirect_field_name)
-            )
-            login_params: dict[str, str] = {}
-            if redirect_to:
-                login_params[self.redirect_field_name] = redirect_to
-            login_url = reverse(
-                "2fa-login", kwargs={"backend": user.profile.get_second_factor_type()}
-            )
-            return HttpResponseRedirect(f"{login_url}?{urlencode(login_params)}")
-        auth_login(self.request, user)
-        return HttpResponseRedirect(self.get_success_url())
+class WeblateLogoutView(TemplateView):
+    """
+    Logout handler, just a reimplementation of standard Django logout.
 
+    - no redirect support
+    - login_required decorator
+    """
 
-class WeblateLogoutView(LogoutView):
-    """Logout handler, just a wrapper around standard Django logout."""
-
+    http_method_names = ["post", "options"]
+    template_name = "registration/logged_out.html"
     request: AuthenticatedHttpRequest
 
     @method_decorator(require_POST)
     @method_decorator(login_required)
     @method_decorator(never_cache)
-    def dispatch(self, request: AuthenticatedHttpRequest, *args, **kwargs):  # type: ignore[override]
-        messages.info(self.request, gettext("Thank you for using Weblate."))
-        return super().dispatch(request, *args, **kwargs)
+    def post(self, request: AuthenticatedHttpRequest, *args, **kwargs):  # type: ignore[override]
+        """Logout may be done via POST."""
+        auth_logout(request)
+        request.user = get_anonymous()
+        return super().get(request, *args, **kwargs)
 
-    def get_default_redirect_url(self):
-        # Avoid need for LOGOUT_REDIRECT_URL to be configured
-        if not settings.LOGOUT_REDIRECT_URL:
-            return reverse("home")
-        return super().get_default_redirect_url()
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["title"] = gettext("Signed out")
+        return context
 
 
 def fake_email_sent(request: AuthenticatedHttpRequest, reset: bool = False):
@@ -869,10 +905,8 @@ def fake_email_sent(request: AuthenticatedHttpRequest, reset: bool = False):
 @never_cache
 def register(request: AuthenticatedHttpRequest):
     """Registration form."""
-    captcha = None
-
     # Fetch invitation
-    invitation: None | Invitation = None
+    invitation: Invitation | None = None
     initial = {}
     if invitation_pk := request.session.get("invitation_link"):
         try:
@@ -895,12 +929,8 @@ def register(request: AuthenticatedHttpRequest):
         backends = set()
 
     if request.method == "POST" and "email" in backends:
-        form = RegistrationForm(request, request.POST)
-        if settings.REGISTRATION_CAPTCHA:
-            captcha = CaptchaForm(request, form, request.POST)
-        if (captcha is None or captcha.is_valid()) and form.is_valid():
-            if captcha:
-                captcha.cleanup_session(request)
+        form = RegistrationForm(request=request, data=request.POST)
+        if form.is_valid():
             if form.cleaned_data["email_user"]:
                 AuditLog.objects.create(
                     form.cleaned_data["email_user"], request, "connect"
@@ -909,9 +939,7 @@ def register(request: AuthenticatedHttpRequest):
             store_userid(request)
             return social_complete(request, "email")
     else:
-        form = RegistrationForm(request, initial=initial)
-        if settings.REGISTRATION_CAPTCHA:
-            captcha = CaptchaForm(request)
+        form = RegistrationForm(request=request, initial=initial)
 
     # Redirect if there is only one backend
     if len(backends) == 1 and "email" not in backends and not invitation:
@@ -925,7 +953,6 @@ def register(request: AuthenticatedHttpRequest):
             "registration_backends": backends - {"email"},
             "title": gettext("User registration"),
             "form": form,
-            "captcha_form": captcha,
             "invitation": invitation,
         },
     )
@@ -935,15 +962,9 @@ def register(request: AuthenticatedHttpRequest):
 @never_cache
 def email_login(request: AuthenticatedHttpRequest):
     """Connect e-mail."""
-    captcha = None
-
     if request.method == "POST":
-        form = EmailForm(request.POST)
-        if settings.REGISTRATION_CAPTCHA:
-            captcha = CaptchaForm(request, form, request.POST)
-        if (captcha is None or captcha.is_valid()) and form.is_valid():
-            if captcha:
-                captcha.cleanup_session(request)
+        form = EmailForm(request=request, data=request.POST)
+        if form.is_valid():
             email_user = form.cleaned_data["email_user"]
             if email_user and email_user != request.user:
                 AuditLog.objects.create(
@@ -953,14 +974,12 @@ def email_login(request: AuthenticatedHttpRequest):
             store_userid(request)
             return social_complete(request, "email")
     else:
-        form = EmailForm()
-        if settings.REGISTRATION_CAPTCHA:
-            captcha = CaptchaForm(request)
+        form = EmailForm(request=request)
 
     return render(
         request,
         "accounts/email.html",
-        {"title": gettext("Register e-mail"), "form": form, "captcha_form": captcha},
+        {"title": gettext("Register e-mail"), "form": form},
     )
 
 
@@ -1033,7 +1052,6 @@ def reset_password_set(request: AuthenticatedHttpRequest):
         {
             "title": gettext("Password reset"),
             "form": form,
-            "captcha_form": None,
             "second_stage": True,
         },
     )
@@ -1056,18 +1074,12 @@ def reset_password(request: AuthenticatedHttpRequest):
         )
         return redirect("login")
 
-    captcha = None
-
     # We're already in the reset phase
     if "perform_reset" in request.session:
         return reset_password_set(request)
     if request.method == "POST":
-        form = ResetForm(request.POST)
-        if settings.REGISTRATION_CAPTCHA:
-            captcha = CaptchaForm(request, form, request.POST)
-        if (captcha is None or captcha.is_valid()) and form.is_valid():
-            if captcha:
-                captcha.cleanup_session(request)
+        form = ResetForm(request=request, data=request.POST)
+        if form.is_valid():
             if form.cleaned_data["email_user"]:
                 audit = AuditLog.objects.create(
                     form.cleaned_data["email_user"], request, "reset-request"
@@ -1083,15 +1095,13 @@ def reset_password(request: AuthenticatedHttpRequest):
                     "reset-nonexisting",
                     context={
                         "address": get_ip_address(request),
-                        "user_agent:": get_user_agent(request),
+                        "user_agent": get_user_agent(request),
                         "registration_hint": get_registration_hint(email),
                     },
                 )
             return fake_email_sent(request, True)
     else:
-        form = ResetForm()
-        if settings.REGISTRATION_CAPTCHA:
-            captcha = CaptchaForm(request)
+        form = ResetForm(request=request)
 
     return render(
         request,
@@ -1099,7 +1109,6 @@ def reset_password(request: AuthenticatedHttpRequest):
         {
             "title": gettext("Password reset"),
             "form": form,
-            "captcha_form": captcha,
             "second_stage": False,
         },
     )
@@ -1136,12 +1145,16 @@ def watch(request: AuthenticatedHttpRequest, path):
         project = obj.project
 
         # Mute project level subscriptions
-        mute_real(user, scope=SCOPE_PROJECT, component=None, project=project)
+        mute_real(
+            user, scope=NotificationScope.SCOPE_PROJECT, component=None, project=project
+        )
         # Manually enable component level subscriptions
-        for default_subscription in user.subscription_set.filter(scope=SCOPE_WATCHED):
+        for default_subscription in user.subscription_set.filter(
+            scope=NotificationScope.SCOPE_WATCHED
+        ):
             subscription, created = user.subscription_set.get_or_create(
                 notification=default_subscription.notification,
-                scope=SCOPE_COMPONENT,
+                scope=NotificationScope.SCOPE_COMPONENT,
                 component=obj,
                 project=None,
                 defaults={"frequency": default_subscription.frequency},
@@ -1174,7 +1187,7 @@ def mute_real(user: User, **kwargs) -> None:
         try:
             subscription = user.subscription_set.get_or_create(
                 notification=notification_cls.get_name(),
-                defaults={"frequency": FREQ_NONE},
+                defaults={"frequency": NotificationFrequency.FREQ_NONE},
                 **kwargs,
             )[0]
         except Subscription.MultipleObjectsReturned:
@@ -1185,8 +1198,8 @@ def mute_real(user: User, **kwargs) -> None:
             for subscription in subscriptions[1:]:
                 subscription.delete()
             subscription = subscriptions[0]
-        if subscription.frequency != FREQ_NONE:
-            subscription.frequency = FREQ_NONE
+        if subscription.frequency != NotificationFrequency.FREQ_NONE:
+            subscription.frequency = NotificationFrequency.FREQ_NONE
             subscription.save(update_fields=["frequency"])
 
 
@@ -1195,11 +1208,18 @@ def mute_real(user: User, **kwargs) -> None:
 def mute(request: AuthenticatedHttpRequest, path):
     obj = parse_path(request, path, (Component, Project))
     if isinstance(obj, Component):
-        mute_real(request.user, scope=SCOPE_COMPONENT, component=obj, project=None)
+        mute_real(
+            request.user,
+            scope=NotificationScope.SCOPE_COMPONENT,
+            component=obj,
+            project=None,
+        )
         return redirect(
             "{}?notify_component={}#notifications".format(reverse("profile"), obj.pk)
         )
-    mute_real(request.user, scope=SCOPE_PROJECT, component=None, project=obj)
+    mute_real(
+        request.user, scope=NotificationScope.SCOPE_PROJECT, component=None, project=obj
+    )
     return redirect(
         "{}?notify_project={}#notifications".format(reverse("profile"), obj.pk)
     )
@@ -1295,7 +1315,8 @@ def social_auth(request: AuthenticatedHttpRequest, backend: str):
     try:
         request.backend = load_backend(request.social_strategy, backend, uri)
     except MissingBackend:
-        raise Http404("Backend not found") from None
+        msg = "Backend not found"
+        raise Http404(msg) from None
     # Store session ID for OpenID based auth. The session cookies will not be sent
     # on returning POST request due to SameSite cookie policy
     if isinstance(request.backend, OpenIdAuth):
@@ -1305,7 +1326,12 @@ def social_auth(request: AuthenticatedHttpRequest, backend: str):
                 salt="weblate.authid",
             )
         )
-    return do_auth(request.backend, redirect_name=REDIRECT_FIELD_NAME)
+    try:
+        return do_auth(request.backend, redirect_name=REDIRECT_FIELD_NAME)
+    except AuthException as error:
+        report_error("Could not authenticate")
+        messages.error(request, gettext("Could not authenticate: %s") % error)
+        return redirect("login")
 
 
 def auth_fail(request: AuthenticatedHttpRequest, message: str):
@@ -1347,12 +1373,13 @@ def handle_missing_parameter(
     request: AuthenticatedHttpRequest, backend: str, error: AuthMissingParameter
 ):
     if backend != "email" and error.parameter == "email":
-        return auth_fail(
-            request,
+        messages = [
             gettext("Got no e-mail address from third party authentication service.")
-            + " "
-            + gettext("Please register using e-mail instead."),
-        )
+        ]
+        if "email" in get_auth_keys():
+            # Show only if e-mail authentication is turned on
+            messages.append(gettext("Please register using e-mail instead."))
+        return auth_fail(request, " ".join(messages))
     if error.parameter in {"email", "user", "expires"}:
         return auth_redirect_token(request)
     if error.parameter in {"state", "code"}:
@@ -1404,19 +1431,19 @@ def social_complete(request: AuthenticatedHttpRequest, backend: str):  # noqa: C
     try:
         response = complete(request, backend)
     except InvalidEmail:
-        report_error()
+        report_error("Could not register")
         return auth_redirect_token(request)
     except AuthMissingParameter as error:
-        report_error()
+        report_error("Could not register")
         result = handle_missing_parameter(request, backend, error)
         if result:
             return result
         raise
     except (AuthStateMissing, AuthStateForbidden):
-        report_error()
+        report_error("Could not register")
         return auth_redirect_state(request)
     except AuthFailed:
-        report_error()
+        report_error("Could not register")
         return auth_fail(
             request,
             gettext(
@@ -1425,10 +1452,10 @@ def social_complete(request: AuthenticatedHttpRequest, backend: str):  # noqa: C
             ),
         )
     except AuthCanceled:
-        report_error()
+        report_error("Could not register")
         return auth_fail(request, gettext("Authentication cancelled."))
     except AuthForbidden:
-        report_error()
+        report_error("Could not register")
         return auth_fail(request, gettext("The server does not allow authentication."))
     except EmailAlreadyAssociated:
         return registration_fail(
@@ -1450,7 +1477,7 @@ def social_complete(request: AuthenticatedHttpRequest, backend: str):  # noqa: C
             ),
         )
     except ValidationError as error:
-        report_error()
+        report_error("Could not register")
         return registration_fail(request, str(error))
 
     # Finish second factor authentication
@@ -1470,8 +1497,8 @@ def subscribe(request: AuthenticatedHttpRequest):
         subscription = Subscription(
             user=request.user,
             notification=request.POST["onetime"],
-            scope=SCOPE_COMPONENT,
-            frequency=FREQ_INSTANT,
+            scope=NotificationScope.SCOPE_COMPONENT,
+            frequency=NotificationFrequency.FREQ_INSTANT,
             project=component.project,
             component=component,
             onetime=True,
@@ -1492,7 +1519,7 @@ def unsubscribe(request: AuthenticatedHttpRequest):
             subscription = Subscription.objects.get(
                 pk=int(signer.unsign(request.GET["i"], max_age=24 * 3600))
             )
-            subscription.frequency = FREQ_NONE
+            subscription.frequency = NotificationFrequency.FREQ_NONE
             subscription.save(update_fields=["frequency"])
             messages.success(request, gettext("Notification settings adjusted."))
         except (BadSignature, SignatureExpired, Subscription.DoesNotExist):
@@ -1805,15 +1832,11 @@ class SecondFactorLoginView(SecondFactorMixin, RedirectURLMixin, FormView):
 class WeblateBeginCredentialAuthenticationView(
     SecondFactorMixin, BeginCredentialAuthenticationView
 ):
-    # TODO: https://github.com/Stormbase/django-otp-webauthn/pull/19
-    permission_classes = [AllowAny]
+    pass
 
 
 class WeblateCompleteCredentialAuthenticationView(
     SecondFactorMixin, CompleteCredentialAuthenticationView
 ):
-    # TODO: https://github.com/Stormbase/django-otp-webauthn/pull/19
-    permission_classes = [AllowAny]
-
     def complete_auth(self, device: WebAuthnCredential) -> User:
         return self.second_factor_completed(device)

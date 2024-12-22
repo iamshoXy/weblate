@@ -13,6 +13,7 @@ from django.urls import include, path, re_path
 from django.views.decorators.cache import cache_control, cache_page
 from django.views.decorators.vary import vary_on_cookie
 from django.views.generic import RedirectView, TemplateView
+from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView
 
 import weblate.accounts.urls
 import weblate.accounts.views
@@ -387,8 +388,8 @@ real_patterns = [
     ),
     path(
         "progress/<object_path:path>/",
-        weblate.trans.views.settings.component_progress,
-        name="component_progress",
+        weblate.trans.views.settings.show_progress,
+        name="show_progress",
     ),
     # Announcements
     path(
@@ -771,6 +772,7 @@ real_patterns = [
     path("admin/", admin.site.urls),
     # Weblate management interface
     path("manage/", weblate.wladmin.views.manage, name="manage"),
+    path("manage/support/", weblate.wladmin.views.support_form, name="manage-support"),
     path(
         "manage/addons/", weblate.addons.views.AddonList.as_view(), name="manage-addons"
     ),
@@ -810,10 +812,16 @@ real_patterns = [
         weblate.wladmin.views.performance,
         name="manage-performance",
     ),
-    # Auth
+    # Accounts
     path("accounts/", include(weblate.accounts.urls)),
     # Auth
     path("api/", include((weblate.api.urls, "weblate.api"), namespace="api")),
+    # OpenAPI schema
+    path("api/schema/", SpectacularAPIView.as_view(), name="api-schema"),
+    # API documentation
+    path(
+        "api/docs/", SpectacularRedocView.as_view(url_name="api-schema"), name="redoc"
+    ),
     # Static pages
     path("contact/", weblate.accounts.views.contact, name="contact"),
     path("hosting/", weblate.accounts.views.hosting, name="hosting"),

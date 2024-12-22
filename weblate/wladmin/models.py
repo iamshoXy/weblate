@@ -263,12 +263,16 @@ class BackupService(models.Model):
     def ensure_init(self) -> None:
         if not self.paperkey:
             try:
-                log = initialize(self.repository, self.passphrase)
-                self.backuplog_set.create(event="init", log=log)
                 self.paperkey = get_paper_key(self.repository)
-                self.save()
-            except BackupError as error:
-                self.backuplog_set.create(event="error", log=str(error))
+                self.save(update_fields=["paperkey"])
+            except BackupError:
+                try:
+                    log = initialize(self.repository, self.passphrase)
+                    self.backuplog_set.create(event="init", log=log)
+                    self.paperkey = get_paper_key(self.repository)
+                    self.save()
+                except BackupError as error:
+                    self.backuplog_set.create(event="error", log=str(error))
 
     def backup(self) -> None:
         try:
@@ -324,12 +328,12 @@ class SupportStatusDict(TypedDict):
 
 def get_support_status(request: AuthenticatedHttpRequest) -> SupportStatusDict:
     if hasattr(request, "weblate_support_status"):
-        support_status = request.weblate_support_status
+        support_status: SupportStatusDict = request.weblate_support_status
     else:
         support_status = cache.get(SUPPORT_STATUS_CACHE_KEY)
         if support_status is None:
             support_status_instance = SupportStatus.objects.get_current()
-            support_status: SupportStatusDict = {
+            support_status = {
                 "has_support": support_status_instance.name != "community",
                 "in_limits": support_status_instance.in_limits,
             }

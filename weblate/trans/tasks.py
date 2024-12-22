@@ -137,7 +137,11 @@ def commit_pending(hours=None, pks=None, logger=None) -> None:
             continue
 
         # All pending units are recent
-        if all(unit.recent_content_changes[0].timestamp > age for unit in units):
+        if all(
+            unit.recent_content_changes
+            and unit.recent_content_changes[0].timestamp > age
+            for unit in units
+        ):
             continue
 
         if logger:
@@ -690,28 +694,6 @@ def cleanup_project_backup_download() -> None:
         full_name = os.path.join(PROJECTBACKUP_PREFIX, name)
         if staticfiles_storage.get_created_time(full_name) < cutoff:
             staticfiles_storage.delete(full_name)
-
-
-@app.task(trail=False)
-def detect_completed_translation(change_id: int, old_translated: int) -> None:
-    change = Change.objects.get(pk=change_id)
-
-    translated = change.translation.stats.translated
-    if old_translated < translated and translated == change.translation.stats.all:
-        change.translation.change_set.create(
-            action=Change.ACTION_COMPLETE,
-            user=change.user,
-            author=change.author,
-        )
-
-        # check if component is fully translated
-        component = change.translation.component
-        if component.stats.translated == component.stats.all:
-            change.translation.component.change_set.create(
-                action=Change.ACTION_COMPLETED_COMPONENT,
-                user=change.user,
-                author=change.author,
-            )
 
 
 @app.on_after_finalize.connect

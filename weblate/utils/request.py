@@ -5,8 +5,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import user_agents
-
 if TYPE_CHECKING:
     from weblate.auth.models import AuthenticatedHttpRequest
 
@@ -28,10 +26,16 @@ def get_user_agent_raw(request: AuthenticatedHttpRequest) -> str:
     return get_request_meta(request, "HTTP_USER_AGENT")
 
 
-def get_user_agent(request: AuthenticatedHttpRequest, max_length: int = 200) -> str:
+def get_user_agent(
+    request: AuthenticatedHttpRequest | None, max_length: int = 200
+) -> str:
     """Return formatted user agent for request."""
     raw = get_user_agent_raw(request)
     if not raw:
         return ""
+
+    # Lazily import as this is expensive
+    import user_agents
+
     uaobj = user_agents.parse(raw)
     return str(uaobj)[:max_length]

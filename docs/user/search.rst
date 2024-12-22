@@ -3,6 +3,8 @@
 Searching
 =========
 
+.. _search-strings:
+
 Searching for strings
 +++++++++++++++++++++
 
@@ -73,6 +75,8 @@ Fields
    Component slug or name case-insensitive search, see :ref:`component-slug` and :ref:`component-name`.
 ``project:TEXT``
    Project slug, see :ref:`project-slug`.
+``path:TEXT``
+   Path to the object to limit searching inside component, category, project, or translation.
 ``changed_by:TEXT``
    String was changed by author with given username.
 ``changed:DATETIME``
@@ -162,6 +166,16 @@ Anywhere text is accepted you can also specify a regular expression as ``r"regex
 For example, to search for all source strings which contain any digit between 2
 and 5, use ``source:r"[2-5]"``.
 
+.. hint::
+
+   The regular expressions are evaluated by the database backend and might use
+   different extensions, please consult the database documentation below for
+   more details.
+
+   * `PostgreSQL Regular Expressions Details <https://www.postgresql.org/docs/current/functions-matching.html#POSIX-SYNTAX-DETAILS>`_ (this is the default database engine for Weblate)
+   * `MariaDB Regular Expressions Overview <https://mariadb.com/kb/en/regular-expressions-overview/>`_
+   * `MySQL Regular Expressions <https://dev.mysql.com/doc/refman/8.4/en/regexp.html>`_
+
 Predefined queries
 ------------------
 
@@ -176,6 +190,7 @@ There are many options to order the strings according to your needs:
 
 .. image:: /screenshots/query-sort.webp
 
+.. _search-users:
 
 Searching for users
 +++++++++++++++++++
@@ -196,6 +211,10 @@ The user browsing has similar search abilities:
    User has contributed to a given language in the past 90 days.
 ``contributes:TEXT``
    User has contributed to a given project or component in the past 90 days.
+``change_time:DATETIME``
+   Same as in :ref:`search-strings`.
+``change_action:TEXT``
+   Same as in :ref:`search-strings`.
 
 Additional lookups are available in the :ref:`management-interface`:
 
@@ -205,3 +224,19 @@ Additional lookups are available in the :ref:`management-interface`:
    Search for active users.
 ``email:TEXT``
    Search by e-mail.
+
+.. _date-search:
+
+Fuzzy values for DATETIME fields
+++++++++++++++++++++++++++++++++
+
+Instead of using DATETIME values like MM-DD-YYYY, a string containing adverb
+of time like ``yesterday``, ``last month``, and ``2 days ago`` can be used as
+values in the DATETIME fields.
+
+Examples:
+
+``changed:>="2 weeks ago"``
+    Returns strings that are changed 2 weeks ago from the current date and time.
+``changed:>=yesterday``
+    Returns strings that are changed starting yesterday.

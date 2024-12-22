@@ -101,7 +101,7 @@ jQuery.fn.extend({
   },
 });
 
-function submitForm(evt, combo, selector) {
+function submitForm(evt, _combo, selector) {
   const $target = $(evt.target);
   let $form = $target.closest("form");
 
@@ -151,7 +151,7 @@ function screenshotAddString() {
         list.find("table").replaceWith(data);
       });
     },
-    error: (jqXhr, textStatus, errorThrown) => {
+    error: (_jqXhr, _textStatus, errorThrown) => {
       addAlert(errorThrown);
     },
   });
@@ -292,7 +292,7 @@ function loadTableSorting() {
               $(this).find(".sort-icon").addClass("sort-up");
             }
 
-            inverse = inverse * -1;
+            inverse *= -1;
           });
         }
         // Increase index
@@ -314,6 +314,7 @@ function pgettext(context, msgid) {
   }
   return msgid;
 }
+// biome-ignore lint/correctness/noUnusedVariables: Global function
 function interpolate(fmt, obj, named) {
   if (typeof django !== "undefined") {
     return django.interpolate(fmt, obj, named);
@@ -411,7 +412,7 @@ function initHighlight(root) {
     input.addEventListener("input", syncContent);
 
     /* Handle scrolling */
-    input.addEventListener("scroll", (event) => {
+    input.addEventListener("scroll", (_event) => {
       highlight.scrollTop = input.scrollTop;
       highlight.scrollLeft = input.scrollLeft;
     });
@@ -430,6 +431,8 @@ function initHighlight(root) {
     resizeObserver.observe(input);
   });
   // biome-ignore lint/complexity/noForEach: TODO
+  // biome-ignore lint/complexity/useSimplifiedLogicExpression: TODO
+  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: TODO
   root.querySelectorAll(".highlight-editor").forEach((editor) => {
     const parent = editor.parentElement;
     const hasFocus = editor === document.activeElement;
@@ -479,23 +482,30 @@ function initHighlight(root) {
       const whitespaceRegex = new RegExp(
         [
           "  +|(^) +| +(?=$)| +\n|\n +|\t|",
-          "\u00A0|\u00AD|\u1680|\u2000|\u2001|",
+          "\u00AD|\u1680|\u2000|\u2001|",
           "\u2002|\u2003|\u2004|\u2005|",
           "\u2006|\u2007|\u2008|\u2009|",
           "\u200A|\u202F|\u205F|\u3000",
         ].join(""),
       );
+      // biome-ignore lint/performance/useTopLevelRegex: TODO
+      const newlineRegex = /\n/;
+      // biome-ignore lint/performance/useTopLevelRegex: TODO
+      const nonBreakingSpaceRegex = /\u00A0/;
       const extension = {
         hlspace: {
           pattern: whitespaceRegex,
           lookbehind: true,
         },
         newline: {
-          pattern: /\n/,
+          pattern: newlineRegex,
+        },
+        nbsp: {
+          pattern: nonBreakingSpaceRegex,
         },
       };
       if (placeables) {
-        extension.placeable = RegExp(placeables);
+        extension.placeable = new RegExp(placeables);
       }
       /*
        * We can not use Prism.extend here as we want whitespace highlighting
@@ -517,7 +527,7 @@ function initHighlight(root) {
     editor.addEventListener("input", syncContent);
 
     /* Handle scrolling */
-    editor.addEventListener("scroll", (event) => {
+    editor.addEventListener("scroll", (_event) => {
       highlight.scrollTop = editor.scrollTop;
       highlight.scrollLeft = editor.scrollLeft;
     });
@@ -539,6 +549,7 @@ function initHighlight(root) {
   });
 }
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: TODO
 $(function () {
   const $window = $(window);
   const $document = $(document);
@@ -563,9 +574,13 @@ $(function () {
       $content.load($target.data("href"), (responseText, status, xhr) => {
         if (status !== "success") {
           const msg = gettext("Error while loading page:");
-          $content.text(
-            `${msg} ${xhr.statusText} (${xhr.status}): ${responseText}`,
+          $content.html(
+            `<div class="alert alert-danger" role="alert">
+                ${msg} ${xhr.statusText} (${xhr.status})
+              </div>
+            `,
           );
+          console.error(xhr.statusText, xhr.status, responseText);
         }
         $target.data("loaded", 1);
         loadTableSorting();
@@ -595,12 +610,12 @@ $(function () {
       activeTab = $(
         `.nav [data-toggle=tab][href="${location.hash.substr(0, separator)}"]`,
       );
-      if (activeTab.length) {
+      if (activeTab.length > 0) {
         activeTab.tab("show");
       }
     }
     activeTab = $(`.nav [data-toggle=tab][href="${location.hash}"]`);
-    if (activeTab.length) {
+    if (activeTab.length > 0) {
       activeTab.tab("show");
       window.scrollTo(0, 0);
     } else {
@@ -617,26 +632,26 @@ $(function () {
     activeTab = $(
       `[data-toggle=tab][href="${localStorage.getItem("translate-tab")}"]`,
     );
-    if (activeTab.length) {
+    if (activeTab.length > 0) {
       activeTab.tab("show");
     }
   }
 
   /* Add a hash to the URL when the user clicks on a tab */
-  $('a[data-toggle="tab"]').on("shown.bs.tab", function (e) {
+  $('a[data-toggle="tab"]').on("shown.bs.tab", function (_e) {
     history.pushState(null, null, $(this).attr("href"));
     /* Remove focus on rows */
     $(".selectable-row").removeClass("active");
   });
 
   /* Navigate to a tab when the history changes */
-  window.addEventListener("popstate", (e) => {
+  window.addEventListener("popstate", (_e) => {
     if (location.hash !== "") {
       activeTab = $(`[data-toggle=tab][href="${location.hash}"]`);
     } else {
-      activeTab = Array();
+      activeTab = new Array();
     }
-    if (activeTab.length) {
+    if (activeTab.length > 0) {
       activeTab.tab("show");
     } else {
       $(".nav-tabs a:first").tab("show");
@@ -654,7 +669,6 @@ $(function () {
 
   /* Announcement discard */
   $(".alert").on("close.bs.alert", function () {
-    const $this = $(this);
     const $form = $("#link-post");
 
     const action = this.getAttribute("data-action");
@@ -667,7 +681,7 @@ $(function () {
           csrfmiddlewaretoken: $form.find("input").val(),
           id: this.getAttribute("data-id"),
         },
-        error: (jqXhr, textStatus, errorThrown) => {
+        error: (_jqXhr, _textStatus, errorThrown) => {
           addAlert(errorThrown);
         },
       });
@@ -675,7 +689,7 @@ $(function () {
   });
 
   /* Widgets selector */
-  $(".select-tab").on("change", function (e) {
+  $(".select-tab").on("change", function (_e) {
     $(this).parent().find(".tab-pane").removeClass("active");
     $(`#${$(this).val()}`).addClass("active");
   });
@@ -793,7 +807,7 @@ $(function () {
       }
     });
     /* Save on submit */
-    $forms.submit(function (e) {
+    $forms.submit(function (_e) {
       const data = {};
       const $this = $(this);
 
@@ -824,9 +838,10 @@ $(function () {
   });
 
   /* Copy to clipboard */
-  $("[data-clipboard-text]").on("click", function (e) {
+  $(document).on("click", "[data-clipboard-value]", function (e) {
+    e.preventDefault();
     navigator.clipboard
-      .writeText(this.getAttribute("data-clipboard-text"))
+      .writeText(this.getAttribute("data-clipboard-value"))
       .then(
         () => {
           const text =
@@ -838,7 +853,6 @@ $(function () {
           addAlert(gettext("Please press Ctrl+C to copy."), "danger");
         },
       );
-    e.preventDefault();
   });
 
   /* Auto translate source select */
@@ -858,9 +872,13 @@ $(function () {
 
   /* Override all multiple selects */
   $("select[multiple]").multi({
+    // biome-ignore lint/style/useNamingConvention: need to match the library
     enable_search: true,
+    // biome-ignore lint/style/useNamingConvention: need to match the library
     search_placeholder: gettext("Search…"),
+    // biome-ignore lint/style/useNamingConvention: need to match the library
     non_selected_header: gettext("Available:"),
+    // biome-ignore lint/style/useNamingConvention: need to match the library
     selected_header: gettext("Chosen:"),
   });
 
@@ -899,7 +917,7 @@ $(function () {
       $.ajax({
         url: url,
         type: "get",
-        error: (xmlHttpRequest, textStatus, errorThrown) => {
+        error: (xmlHttpRequest, _textStatus, _errorThrown) => {
           if (xmlHttpRequest.status === 404) {
             clearInterval(progressInterval);
             progressCompleted();
@@ -921,10 +939,11 @@ $(function () {
       fetch(url, {
         method: "DELETE",
         headers: {
+          // biome-ignore lint/style/useNamingConvention: special case
           Accept: "application/json",
           "X-CSRFToken": $form.find("input").val(),
         },
-      }).then((data) => {
+      }).then((_data) => {
         window.location = $("#progress-return").attr("href");
       });
       e.preventDefault();
@@ -932,19 +951,43 @@ $(function () {
   });
 
   /* Generic messages progress */
+  const progressBars = document.querySelectorAll(".progress-bar");
   $("[data-task]").each(function () {
     const $message = $(this);
     const $bar = $message.find(".progress-bar");
+    $bar.attr("data-completed", "0");
 
-    const taskInterval = setInterval(() => {
-      $.get($message.data("task"), (data) => {
-        $bar.width(`${data.progress}%`);
-        if (data.completed) {
-          clearInterval(taskInterval);
-          $message.text(data.result.message);
-        }
-      });
-    }, 1000);
+    const progressCompleted = () => {
+      $bar.attr("data-completed", "1");
+      clearInterval(taskInterval);
+      if (
+        $("#progress-redirect").prop("checked") &&
+        Array.from(progressBars.values()).every((element) => {
+          return element.getAttribute("data-completed") === "1";
+        })
+      ) {
+        window.location = $("#progress-return").attr("href");
+      }
+    };
+
+    const taskInterval = setInterval(
+      () => {
+        $.get($message.data("task"), (data) => {
+          $bar.width(`${data.progress}%`);
+          if (data.completed) {
+            progressCompleted();
+            if (data.result.message) {
+              $message.text(data.result.message);
+            }
+          }
+        }).fail((jqXhr) => {
+          if (jqXhr.status === 404) {
+            progressCompleted();
+          }
+        });
+      },
+      1000 * Math.max(progressBars.length / 5, 1),
+    );
   });
 
   /* Disable invalid file format choices */
@@ -953,7 +996,7 @@ $(function () {
   });
 
   // Show the correct toggle button
-  if ($(".sort-field").length) {
+  if ($(".sort-field").length > 0) {
     const sortName = $("#query-sort-dropdown span.search-label").text();
     const sortDropdownValue = $(".sort-field li a")
       .filter(function () {
@@ -979,38 +1022,49 @@ $(function () {
     const branches = $form.data("branches");
     const $select = $form.find("select[name=branch]");
     $select.empty();
-    $.each(branches[$this.val()], (key, value) => {
+    $.each(branches[$this.val()], (_key, value) => {
       $select.append($("<option></option>").attr("value", value).text(value));
     });
   });
 
   /* Click to edit position inline. Disable when clicked outside or pressed ESC */
-  $("#position-input").on("click", function () {
+  const $positionInput = $(".position-input");
+  const $positionInputEditable = $(".position-input-editable");
+  const $positionInputEditableInput = $("#position-input-editable-input");
+  $positionInput.on("click", function (event) {
     const $form = $(this).closest("form");
-    $("#position-input").hide();
+    $positionInput.hide();
     $form.find("input[name=offset]").prop("disabled", false);
-    $("#position-input-editable").show();
-    $("#position-input-editable-input").attr("type", "number").focus();
+    $positionInputEditable.show();
+    $positionInputEditableInput.attr("type", "number");
+    $(event.target)
+      .closest(".pagination")
+      .find("#position-input-editable-input")
+      .focus();
     document.addEventListener("click", clickedOutsideEditableInput);
     document.addEventListener("keyup", pressedEscape);
   });
   const clickedOutsideEditableInput = (event) => {
+    // Check if clicked outside of the input and the editable input
     if (
-      !$.contains($("#position-input-editable")[0], event.target) &&
-      event.target !== $("#position-input")[0]
+      // biome-ignore lint/complexity/useSimplifiedLogicExpression: TODO
+      !$positionInputEditable.is(event.target) &&
+      // biome-ignore lint/style/useExplicitLengthCheck: Done?
+      !($positionInputEditable.has(event.target).length === 0) &&
+      !$positionInput.is(event.target)
     ) {
-      $("#position-input").show();
-      $("#position-input-editable-input").attr("type", "hidden");
-      $("#position-input-editable").hide();
-      document.emoveEventListener("click", clickedOutsideEditableInput);
+      $positionInput.show();
+      $positionInputEditableInput.attr("type", "hidden");
+      $positionInputEditable.hide();
+      document.removeEventListener("click", clickedOutsideEditableInput);
       document.removeEventListener("keyup", pressedEscape);
     }
   };
   const pressedEscape = (event) => {
-    if (event.key === "Escape" && event.target !== $("#position-input")[0]) {
-      $("#position-input").show();
-      $("#position-input-editable-input").attr("type", "hidden");
-      $("#position-input-editable").hide();
+    if (event.key === "Escape" && event.target !== $positionInput[0]) {
+      $positionInput.show();
+      $positionInputEditableInput.attr("type", "hidden");
+      $positionInputEditable.hide();
       document.removeEventListener("click", clickedOutsideEditableInput);
       document.removeEventListener("keyup", pressedEscape);
     }
@@ -1026,14 +1080,14 @@ $(function () {
 
     const $title = $this.find("span.title");
     let text = $this.text();
-    if ($title.length) {
+    if ($title.length > 0) {
       text = $title.text();
     }
     $group.find("span.search-label-auto").text(text);
 
     if ($group.hasClass("sort-field")) {
       $group.find("input[name=sort_by]").val($this.data("sort"));
-      if ($this.closest(".result-page-form").length) {
+      if ($this.closest(".result-page-form").length > 0) {
         $this.closest("form").submit();
       }
     }
@@ -1070,7 +1124,7 @@ $(function () {
       }
     });
     $input.val(sortParams.join(","));
-    if ($this.closest(".result-page-form").length) {
+    if ($this.closest(".result-page-form").length > 0) {
       $this.closest("form").submit();
     }
   });
@@ -1083,7 +1137,7 @@ $(function () {
         return false;
       }
     });
-  $("#id_q").on("input", function (event) {
+  $("#id_q").on("input", function (_event) {
     const $form = $(this).closest("form");
     $form.find("input[name=offset]").prop("disabled", true);
   });
@@ -1162,7 +1216,8 @@ $(function () {
           }));
           callback(userMentionList);
         },
-        error: (jqXhr, textStatus, errorThrown) => {
+        error: (_jqXhr, _textStatus, errorThrown) => {
+          // biome-ignore lint/suspicious/noConsole: TODO
           console.error(errorThrown);
         },
       });
@@ -1171,7 +1226,7 @@ $(function () {
   tribute.attach(document.querySelectorAll(".markdown-editor"));
   // biome-ignore lint/complexity/noForEach: TODO
   document.querySelectorAll(".markdown-editor").forEach((editor) => {
-    editor.addEventListener("tribute-active-true", (e) => {
+    editor.addEventListener("tribute-active-true", (_e) => {
       $(".tribute-container").addClass("open");
       $(".tribute-container ul").addClass("dropdown-menu");
     });
@@ -1231,7 +1286,7 @@ $(function () {
   document
     .querySelectorAll(".nav-pills > li > a > button.close")
     .forEach((button) => {
-      button.addEventListener("click", (e) => {
+      button.addEventListener("click", (_e) => {
         const link = button.parentElement;
         // biome-ignore lint/complexity/noForEach: TODO
         document
@@ -1284,6 +1339,7 @@ $(function () {
               return data.results.map((user) => {
                 return {
                   username: user.username,
+                  // biome-ignore lint/style/useNamingConvention: special case
                   full_name: `${user.full_name} (${user.username})`,
                 };
               });
@@ -1295,7 +1351,9 @@ $(function () {
         events: {
           input: {
             focus() {
-              if (autoCompleteInput.value.length) autoCompleteJs.start();
+              if (autoCompleteInput.value.length > 0) {
+                autoCompleteJs.start();
+              }
             },
             selection(event) {
               const feedback = event.detail;
@@ -1347,7 +1405,9 @@ $(function () {
     events: {
       input: {
         focus() {
-          if (siteSearch.input.value.length) siteSearch.start();
+          if (siteSearch.input.value.length > 0) {
+            siteSearch.start();
+          }
         },
       },
     },
@@ -1371,7 +1431,7 @@ $(function () {
   });
 
   /* Move current translation into the view */
-  $('a[data-toggle="tab"][href="#nearby"]').on("shown.bs.tab", (e) => {
+  $('a[data-toggle="tab"][href="#nearby"]').on("shown.bs.tab", (_e) => {
     document.querySelector("#nearby .current_translation").scrollIntoView({
       block: "nearest",
       inline: "nearest",
@@ -1381,7 +1441,7 @@ $(function () {
 
   // biome-ignore lint/complexity/noForEach: TODO
   document.querySelectorAll("[data-visibility]").forEach((toggle) => {
-    toggle.addEventListener("click", (event) => {
+    toggle.addEventListener("click", (_event) => {
       // biome-ignore lint/complexity/noForEach: TODO
       document
         .querySelectorAll(toggle.getAttribute("data-visibility"))
@@ -1391,69 +1451,77 @@ $(function () {
     });
   });
 
-  $("input[name='period']").daterangepicker(
-    {
-      autoApply: true,
-      startDate:
-        $("input[name='period']#id_period").attr("data-start-date") || moment(),
-      endDate:
-        $("input[name='period']#id_period").attr("data-end-date") || moment(),
-      alwaysShowCalendars: true,
-      opens: "left",
-      locale: {
-        customRangeLabel: gettext("Custom range"),
-        daysOfWeek: [
-          pgettext("Short name of day", "Su"),
-          pgettext("Short name of day", "Mo"),
-          pgettext("Short name of day", "Tu"),
-          pgettext("Short name of day", "We"),
-          pgettext("Short name of day", "Th"),
-          pgettext("Short name of day", "Fr"),
-          pgettext("Short name of day", "Sa"),
-        ],
-        monthNames: [
-          pgettext("Short name of month", "Jan"),
-          pgettext("Short name of month", "Feb"),
-          pgettext("Short name of month", "Mar"),
-          pgettext("Short name of month", "Apr"),
-          pgettext("Short name of month", "May"),
-          pgettext("Short name of month", "Jun"),
-          pgettext("Short name of month", "Jul"),
-          pgettext("Short name of month", "Aug"),
-          pgettext("Short name of month", "Sep"),
-          pgettext("Short name of month", "Oct"),
-          pgettext("Short name of month", "Nov"),
-          pgettext("Short name of month", "Dec"),
-        ],
-      },
-      ranges: {
-        [gettext("Today")]: [moment(), moment()],
-        [gettext("Yesterday")]: [
-          moment().subtract(1, "days"),
-          moment().subtract(1, "days"),
-        ],
-        [gettext("Last 7 days")]: [moment().subtract(6, "days"), moment()],
-        [gettext("Last 30 days")]: [moment().subtract(29, "days"), moment()],
-        [gettext("This month")]: [
-          moment().startOf("month"),
-          moment().endOf("month"),
-        ],
-        [gettext("Last month")]: [
-          moment().subtract(1, "month").startOf("month"),
-          moment().subtract(1, "month").endOf("month"),
-        ],
-        [gettext("This year")]: [
-          moment().startOf("year"),
-          moment().endOf("year"),
-        ],
-        [gettext("Last year")]: [
-          moment().subtract(1, "year").startOf("year"),
-          moment().subtract(1, "year").endOf("year"),
-        ],
-      },
+  $("input[name='period']").daterangepicker({
+    autoApply: false,
+    autoUpdateInput: false,
+    startDate: $("input[name='period']#id_period").attr("data-start-date"),
+    endDate: $("input[name='period']#id_period").attr("data-end-date"),
+    alwaysShowCalendars: true,
+    cancelButtonClasses: "btn-warning",
+    opens: "left",
+    locale: {
+      customRangeLabel: gettext("Custom range"),
+      cancelLabel: gettext("Clear"),
+      daysOfWeek: [
+        pgettext("Short name of day", "Su"),
+        pgettext("Short name of day", "Mo"),
+        pgettext("Short name of day", "Tu"),
+        pgettext("Short name of day", "We"),
+        pgettext("Short name of day", "Th"),
+        pgettext("Short name of day", "Fr"),
+        pgettext("Short name of day", "Sa"),
+      ],
+      monthNames: [
+        pgettext("Short name of month", "Jan"),
+        pgettext("Short name of month", "Feb"),
+        pgettext("Short name of month", "Mar"),
+        pgettext("Short name of month", "Apr"),
+        pgettext("Short name of month", "May"),
+        pgettext("Short name of month", "Jun"),
+        pgettext("Short name of month", "Jul"),
+        pgettext("Short name of month", "Aug"),
+        pgettext("Short name of month", "Sep"),
+        pgettext("Short name of month", "Oct"),
+        pgettext("Short name of month", "Nov"),
+        pgettext("Short name of month", "Dec"),
+      ],
     },
-    (start, end, label) => {},
-  );
+    ranges: {
+      [gettext("Today")]: [moment(), moment()],
+      [gettext("Yesterday")]: [
+        moment().subtract(1, "days"),
+        moment().subtract(1, "days"),
+      ],
+      [gettext("Last 7 days")]: [moment().subtract(6, "days"), moment()],
+      [gettext("Last 30 days")]: [moment().subtract(29, "days"), moment()],
+      [gettext("This month")]: [
+        moment().startOf("month"),
+        moment().endOf("month"),
+      ],
+      [gettext("Last month")]: [
+        moment().subtract(1, "month").startOf("month"),
+        moment().subtract(1, "month").endOf("month"),
+      ],
+      [gettext("This year")]: [
+        moment().startOf("year"),
+        moment().endOf("year"),
+      ],
+      [gettext("Last year")]: [
+        moment().subtract(1, "year").startOf("year"),
+        moment().subtract(1, "year").endOf("year"),
+      ],
+    },
+  });
+
+  $("input[name='period']").on("apply.daterangepicker", function (_ev, picker) {
+    $(this).val(
+      `${picker.startDate.format("MM/DD/YYYY")} - ${picker.endDate.format("MM/DD/YYYY")}`,
+    );
+  });
+
+  $("input[name='period']").on("cancel.daterangepicker", (_ev, picker) => {
+    picker.element.val("");
+  });
 
   /* Singular or plural new unit switcher */
   $("input[name='new-unit-form-type']").on("change", function () {
@@ -1462,8 +1530,8 @@ $(function () {
       el.dispatchEvent(new CustomEvent("input"));
     };
     const transferTextareaInputs = (fromId, toId) => {
-      $(`${toId} textarea`).each((toIdx, toTextArea) => {
-        $(`${fromId} textarea`).each((fromIdx, fromTextArea) => {
+      $(`${toId} textarea`).each((_toIdx, toTextArea) => {
+        $(`${fromId} textarea`).each((_fromIdx, fromTextArea) => {
           if (fromTextArea.name === toTextArea.name) {
             refreshInput(toTextArea, fromTextArea.value);
           }
@@ -1498,7 +1566,9 @@ $(function () {
     const deviceInput = document.querySelector(
       "input[name=passkey-device-name]",
     );
-    const csrfToken = document.querySelector("input[name=csrfmiddlewaretoken]");
+    const _csrfToken = document.querySelector(
+      "input[name=csrfmiddlewaretoken]",
+    );
 
     const action = deviceInput.getAttribute("data-href").replace("000000", id);
 
@@ -1514,11 +1584,13 @@ $(function () {
   });
 
   /* Warn users that they do not want to use developer console in most cases */
+  // biome-ignore lint/suspicious: It is intentional to log a warning
   console.log(
     "%c%s",
     "color: red; font-weight: bold; font-size: 50px; font-family: sans-serif; -webkit-text-stroke: 1px black;",
     pgettext("Alert to user when opening browser developer console", "Stop!"),
   );
+  // biome-ignore lint/suspicious: It is intentional to log a warning
   console.log(
     "%c%s",
     "font-size: 20px; font-family: sans-serif",
@@ -1526,6 +1598,7 @@ $(function () {
       "This is a browser feature intended for developers. If someone told you to copy-paste something here, they are likely trying to compromise your Weblate account.",
     ),
   );
+  // biome-ignore lint/suspicious: It is intentional to log a warning
   console.log(
     "%c%s",
     "font-size: 20px; font-family: sans-serif",

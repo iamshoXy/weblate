@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import re
 from collections import defaultdict
 from itertools import chain
 from typing import TYPE_CHECKING, Literal, overload
@@ -18,9 +19,11 @@ from .base import (
     DownloadMultipleTranslations,
     MachineTranslationError,
 )
-from .forms import OpenAIMachineryForm
+from .forms import AzureOpenAIMachineryForm, OpenAIMachineryForm
 
 if TYPE_CHECKING:
+    from openai import OpenAI
+
     from weblate.trans.models import Unit
 
 
@@ -38,6 +41,7 @@ You do not include transliteration.
 {glossary}
 """
 SEPARATOR = "\n==WEBLATE_PART==\n"
+SEPARATOR_RE = re.compile(r"\n *==WEBLATE_PART== *\n")
 SEPARATOR_PROMPT = f"""
 You receive an input as strings separated by {SEPARATOR} and
 your answer separates strings by {SEPARATOR}.
@@ -56,50 +60,16 @@ You treat strings like {placeable_1} or {placeable_2} as placeables for user inp
 """
 
 
-class OpenAITranslation(BatchMachineTranslation):
-    name = "OpenAI"
+class BaseOpenAITranslation(BatchMachineTranslation):
     max_score = 90
     request_timeout = 60
-
-    settings_form = OpenAIMachineryForm
+    client: OpenAI
 
     def __init__(self, settings=None) -> None:
-        from openai import OpenAI
-
         super().__init__(settings)
-        self.client = OpenAI(
-            api_key=self.settings["key"],
-            timeout=self.request_timeout,
-            base_url=self.settings.get("base_url") or None,
-        )
-        self._models: None | set[str] = None
 
     def is_supported(self, source, language) -> bool:
         return True
-
-    def get_model(self) -> str:
-        if self._models is None:
-            cache_key = self.get_cache_key("models")
-            models_cache = cache.get(cache_key)
-            if models_cache is not None:
-                # hiredis-py 3 makes list from set
-                self._models = set(models_cache)
-            else:
-                self._models = {model.id for model in self.client.models.list()}
-                cache.set(cache_key, self._models, 3600)
-
-        if self.settings["model"] in self._models:
-            return self.settings["model"]
-        if self.settings["model"] == "auto":
-            for model, _name in self.settings_form.MODEL_CHOICES:
-                if model == "auto":
-                    continue
-                if model in self._models:
-                    return model
-        if self.settings["model"] == "custom":
-            return self.settings["custom_model"]
-
-        raise MachineTranslationError(f"Unsupported model: {self.settings['model']}")
 
     def format_prompt_part(self, name: Literal["style", "persona"]):
         text = self.settings[name]
@@ -152,9 +122,6 @@ class OpenAITranslation(BatchMachineTranslation):
             placeables=placeables,
         )
 
-    def _can_rephrase(self, unit: Unit | None) -> bool:
-        return unit is not None and unit.translated and not unit.readonly
-
     def download_multiple_translations(
         self,
         source,
@@ -169,7 +136,7 @@ class OpenAITranslation(BatchMachineTranslation):
 
         # Separate rephrasing and new translations
         for text, unit in sources:
-            if self._can_rephrase(unit):
+            if unit is not None and unit.translated and not unit.readonly:
                 rephrase.append((text, unit))
             else:
                 texts.append(text)
@@ -253,18 +220,20 @@ class OpenAITranslation(BatchMachineTranslation):
                 extra_log=translations_string,
                 message=True,
             )
-            raise MachineTranslationError("Blank assistant reply")
+            msg = "Blank assistant reply"
+            raise MachineTranslationError(msg)
 
-        translations = translations_string.split(SEPARATOR)
+        # Ignore extra whitespace in response as OpenAI can be creative in that
+        # (see https://github.com/WeblateOrg/weblate/issues/12456)
+        translations = SEPARATOR_RE.split(translations_string)
         if not rephrase and len(translations) != len(texts):
             self.report_error(
                 "Failed to parse assistant reply",
                 extra_log=translations_string,
                 message=True,
             )
-            raise MachineTranslationError(
-                f"Could not parse assistant reply, expected={len(texts)}, received={len(translations)}"
-            )
+            msg = f"Could not parse assistant reply, expected={len(texts)}, received={len(translations)}"
+            raise MachineTranslationError(msg)
 
         for index, translation in enumerate(translations):
             text = texts[index if not rephrase else 0]
@@ -276,3 +245,68 @@ class OpenAITranslation(BatchMachineTranslation):
                     "source": text,
                 }
             )
+
+    def get_model(self) -> str:
+        raise NotImplementedError
+
+
+class OpenAITranslation(BaseOpenAITranslation):
+    name = "OpenAI"
+
+    settings_form = OpenAIMachineryForm
+
+    def __init__(self, settings=None) -> None:
+        from openai import OpenAI
+
+        super().__init__(settings)
+        self.client = OpenAI(
+            api_key=self.settings["key"],
+            timeout=self.request_timeout,
+            base_url=self.settings.get("base_url") or None,
+        )
+        self._models: set[str] | None = None
+
+    def get_model(self) -> str:
+        if self._models is None:
+            cache_key = self.get_cache_key("models")
+            models_cache = cache.get(cache_key)
+            if models_cache is not None:
+                # hiredis-py 3 makes list from set
+                self._models = set(models_cache)
+            else:
+                self._models = {model.id for model in self.client.models.list()}
+                cache.set(cache_key, self._models, 3600)
+
+        if self.settings["model"] in self._models:
+            return self.settings["model"]
+        if self.settings["model"] == "auto":
+            for model, _name in self.settings_form.MODEL_CHOICES:
+                if model == "auto":
+                    continue
+                if model in self._models:
+                    return model
+        if self.settings["model"] == "custom":
+            return self.settings["custom_model"]
+
+        msg = f"Unsupported model: {self.settings['model']}"
+        raise MachineTranslationError(msg)
+
+
+class AzureOpenAITranslation(BaseOpenAITranslation):
+    name = "Azure OpenAI"
+    settings_form = AzureOpenAIMachineryForm
+
+    def __init__(self, settings=None) -> None:
+        from openai import AzureOpenAI
+
+        super().__init__(settings)
+        self.client = AzureOpenAI(
+            api_key=self.settings["key"],
+            api_version="2024-06-01",
+            timeout=self.request_timeout,
+            azure_endpoint=self.settings.get("azure_endpoint") or "",
+            azure_deployment=self.settings["deployment"],
+        )
+
+    def get_model(self) -> str:
+        return self.settings["deployment"]

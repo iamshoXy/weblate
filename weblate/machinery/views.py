@@ -21,7 +21,7 @@ from django.views.decorators.http import require_POST
 from django.views.generic import TemplateView
 from django.views.generic.edit import FormView
 
-from weblate.configuration.models import Setting
+from weblate.configuration.models import Setting, SettingCategory
 from weblate.machinery.base import (
     BatchMachineTranslation,
     MachineTranslationError,
@@ -43,8 +43,8 @@ class MachineryMixin:
     @cached_property
     def global_settings_dict(self) -> dict[str, SettingsDict]:
         return cast(
-            dict[str, SettingsDict],
-            Setting.objects.get_settings_dict(Setting.CATEGORY_MT),
+            "dict[str, SettingsDict]",
+            Setting.objects.get_settings_dict(SettingCategory.MT),
         )
 
 
@@ -116,7 +116,7 @@ class MachineryConfiguration:
     def has_settings(self):
         return self.machinery.settings_form is not None
 
-    def get_absolute_url(self):
+    def get_absolute_url(self) -> str:
         kwargs = {"machinery": self.id}
         if self.project:
             kwargs["project"] = self.project.slug
@@ -275,7 +275,8 @@ class EditMachineryView(FormView):
             return HttpResponseRedirect(self.get_success_url())
 
         if not self.machinery.is_available:
-            raise Http404("Invalid service specified")
+            msg = "Invalid service specified"
+            raise Http404(msg)
 
         if "enable" in request.POST:
             self.delete_service()
@@ -290,14 +291,15 @@ class EditMachineryView(FormView):
 
     def get(self, request: AuthenticatedHttpRequest, *args, **kwargs):
         if not self.machinery.is_available:
-            raise Http404("Invalid service specified")
+            msg = "Invalid service specified"
+            raise Http404(msg)
         return super().get(request, *args, **kwargs)
 
 
 class EditMachineryGlobalView(MachineryGlobalMixin, EditMachineryView):
     def save_settings(self, data: SettingsDict) -> None:
         setting, created = Setting.objects.get_or_create(
-            category=Setting.CATEGORY_MT,
+            category=SettingCategory.MT,
             name=self.machinery_id,
             defaults={"value": data},
         )
@@ -307,7 +309,7 @@ class EditMachineryGlobalView(MachineryGlobalMixin, EditMachineryView):
 
     def delete_service(self) -> None:
         Setting.objects.filter(
-            category=Setting.CATEGORY_MT,
+            category=SettingCategory.MT,
             name=self.machinery_id,
         ).delete()
 
@@ -352,7 +354,7 @@ class EditMachineryProjectView(MachineryProjectMixin, EditMachineryView):
 
 
 def format_string_helper(
-    source: str, translation: Translation, diff: None | str = None
+    source: str, translation: Translation, diff: str | None = None
 ):
     return format_language_string(source, translation, diff=diff)["items"][0]["content"]
 
@@ -382,7 +384,8 @@ def handle_machinery(request: AuthenticatedHttpRequest, service, unit, search=No
     try:
         translation_service_class = MACHINERY[service]
     except KeyError as error:
-        raise Http404("Invalid service specified") from error
+        msg = "Invalid service specified"
+        raise Http404(msg) from error
 
     # Error response
     response = {
@@ -423,7 +426,7 @@ def handle_machinery(request: AuthenticatedHttpRequest, service, unit, search=No
         except MachineTranslationError as exc:
             response["responseDetails"] = str(exc)
         except Exception as error:
-            report_error(project=component.project)
+            report_error("Machinery failed", project=component.project)
             response["responseDetails"] = f"{error.__class__.__name__}: {error}"
 
     if response["responseStatus"] != 200:

@@ -40,17 +40,21 @@ def download_invoice(request: AuthenticatedHttpRequest, pk):
     """Download invoice PDF."""
     invoice = get_object_or_404(Invoice, pk=pk)
 
-    if not invoice.ref:
-        raise Http404("No reference!")
+    filename = invoice.full_filename
+
+    if not filename:
+        msg = "No reference!"
+        raise Http404(msg)
 
     if not request.user.has_perm("billing.view", invoice.billing):
         raise PermissionDenied
 
     if not invoice.filename_valid:
-        raise Http404(f"File {invoice.filename} does not exist!")
+        msg = f"File {invoice.filename} does not exist!"
+        raise Http404(msg)
 
     return FileResponse(
-        open(invoice.full_filename, "rb"),  # noqa: SIM115
+        open(filename, "rb"),
         as_attachment=True,
         filename=invoice.filename,
         content_type="application/pdf",
@@ -59,13 +63,17 @@ def download_invoice(request: AuthenticatedHttpRequest, pk):
 
 def handle_post(request: AuthenticatedHttpRequest, billing) -> None:
     if "extend" in request.POST and request.user.has_perm("billing.manage"):
+        now = timezone.now()
         if billing.is_trial:
             billing.state = Billing.STATE_TRIAL
-            billing.expiry = timezone.now() + timedelta(days=14)
+            if billing.expiry and billing.expiry > now:
+                billing.expiry += timedelta(days=14)
+            else:
+                billing.expiry = now + timedelta(days=14)
             billing.removal = None
             billing.save(update_fields=["expiry", "removal", "state"])
         elif billing.removal:
-            billing.removal = timezone.now() + timedelta(days=14)
+            billing.removal = now + timedelta(days=14)
             billing.save(update_fields=["removal"])
     elif "recurring" in request.POST:
         if "recurring" in billing.payment:
@@ -73,6 +81,8 @@ def handle_post(request: AuthenticatedHttpRequest, billing) -> None:
         billing.save()
     elif "terminate" in request.POST:
         billing.state = Billing.STATE_TERMINATED
+        billing.expiry = None
+        billing.removal = None
         billing.save()
     elif billing.valid_libre:
         if "approve" in request.POST and request.user.has_perm("billing.manage"):
@@ -88,9 +98,9 @@ def handle_post(request: AuthenticatedHttpRequest, billing) -> None:
                 billing.save(update_fields=["payment"])
                 mail_admins_contact(
                     request,
-                    "Hosting request for %(billing)s",
-                    HOSTING_TEMPLATE,
-                    {
+                    subject=f"Hosting request for {billing}",
+                    message=HOSTING_TEMPLATE,
+                    context={
                         "billing": billing,
                         "name": request.user.full_name,
                         "email": request.user.email,
@@ -99,8 +109,9 @@ def handle_post(request: AuthenticatedHttpRequest, billing) -> None:
                         "message": form.cleaned_data["message"],
                         "billing_url": billing.get_absolute_url(),
                     },
-                    request.user.get_author_name(request.user.email),
-                    settings.ADMINS_HOSTING,
+                    name=request.user.get_visible_name(),
+                    email=request.user.email,
+                    to=settings.ADMINS_HOSTING,
                 )
             else:
                 show_form_errors(request, form)

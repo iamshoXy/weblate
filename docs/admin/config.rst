@@ -46,6 +46,19 @@ Weblate can use Akismet to check incoming anonymous suggestions for spam.
 Visit `akismet.com <https://akismet.com/>`_ to purchase an API key
 and associate it with a site.
 
+.. setting:: ALTCHA_MAX_NUMBER
+
+ALTCHA_MAX_NUMBER
+-----------------
+
+.. versionadded:: 5.9
+
+Configures a maximal number for ALTCHA proof-of-work mechanism.
+
+.. seealso::
+
+    `ALTCHA Proof of Work Mechanism <https://altcha.org/docs/proof-of-work/>`_
+
 .. setting:: ANONYMOUS_USER_NAME
 
 ANONYMOUS_USER_NAME
@@ -437,7 +450,7 @@ The following subdirectories usually exist:
 :file:`backups`
     Daily backup data. Please check :ref:`backup-dumps` for details.
 :file:`fonts`:
-    User-uploaded  fonts, see :ref:`fonts`.
+    User-uploaded fonts, see :ref:`fonts`.
 :file:`cache`
     Various caches. Can be placed elsewhere using :setting:`CACHE_DIR`.
 
@@ -445,7 +458,7 @@ The following subdirectories usually exist:
 
 .. note::
 
-    This directory has to be writable by Weblate. Running it as uWSGI means
+    This directory has to be writable by Weblate. Running it as WSGI means
     the ``www-data`` user should have write access to it.
 
     The easiest way to achieve this is to make the user the owner of the directory:
@@ -716,7 +729,7 @@ Please tweak your reverse proxy configuration to emit :http:header:`X-Forwarded-
 let Django correctly detect the SSL status.
 
 In case this is disabled, Weblate will fail to start with an
-``otp_webauthn.E031`` error.  You can silence this error by adding it to
+``otp_webauthn.E031`` error. You can silence this error by adding it to
 :setting:`django:SILENCED_SYSTEM_CHECKS`, but still WebAuthn will not work for
 sites without HTTPS.
 
@@ -831,6 +844,14 @@ List for credentials for GitHub servers.
         },
     }
 
+.. note::
+
+   When creating a fine-grained personal access token, grant read and write
+   access to :guilabel:`Contents` and :guilabel:`Pull requests`.
+
+   :guilabel:`Administration` might also be necessary for forking a repository
+   if you intend to use forking and the original repository is not public.
+
 .. hint::
 
    Use ``api.github.com`` as a API host for https://github.com/.
@@ -851,7 +872,7 @@ BITBUCKETSERVER_CREDENTIALS
 
 .. versionadded:: 4.16
 
-List for credentials for Bitbucket servers.
+List for credentials for Bitbucket Data Center.
 
 .. code-block:: python
 
@@ -868,6 +889,46 @@ List for credentials for Bitbucket servers.
 
    :ref:`vcs-bitbucket-server`,
    `Bitbucket: HTTP access token <https://confluence.atlassian.com/bitbucketserver/http-access-tokens-939515499.html>`_
+
+.. setting:: BITBUCKETCLOUD_CREDENTIALS
+
+BITBUCKETCLOUD_CREDENTIALS
+---------------------------
+
+.. versionadded:: 5.8
+
+List for credentials for Bitbucket Cloud servers.
+
+.. code-block:: python
+
+    BITBUCKETCLOUD_CREDENTIALS = {
+        "bitbucket.org": {
+            "username": "your-username",
+            "workspace": "your-workspace-slug",
+            "token": "your-app-password",
+        },
+    }
+
+The configuration dictionary consists of credentials defined for each API host.
+The API host might be different from what you use in the web browser, for
+example GitHub API is accessed as ``api.github.com``.
+
+The following configuration is available for each host:
+
+``username``
+    API user.
+``workspace``
+    The user workspace slug.
+``token``
+    The App password with `pullrequest:write` permission.
+
+Additional settings not described here can be found at :ref:`settings-credentials`.
+
+.. seealso::
+
+   :ref:`vcs-bitbucket-cloud`,
+   `Create an App password <https://support.atlassian.com/bitbucket-cloud/docs/create-an-app-password/>`_,
+   `App password permissions <https://support.atlassian.com/bitbucket-cloud/docs/app-password-permissions/>`_
 
 .. setting:: AZURE_DEVOPS_CREDENTIALS
 
@@ -1271,7 +1332,9 @@ For example:
 NEARBY_MESSAGES
 ---------------
 
-How many strings to show around the currently translated string. This is just a default value, users can adjust this in :ref:`user-profile`.
+Number of nearby strings to show in each direction in the full editor.
+
+This is just a default value, users can adjust this in :ref:`user-profile`.
 
 .. setting:: DEFAULT_PAGE_LIMIT
 
@@ -1453,7 +1516,7 @@ PROJECT_WEB_RESTRICT_RE
 
 .. versionadded:: 4.15
 
-Defines a regular expression to restrict project websites. Any matching URLs will be rejected.
+Defines a regular expression to limit what can be entered as :ref:`project-web`. Any matching URLs will be rejected.
 
 .. seealso::
 
@@ -1549,6 +1612,11 @@ If turned on, a CAPTCHA is added to all pages where a users enters their e-mail 
 * Password recovery.
 * Adding e-mail to an account.
 * Contact form for users that are not signed in.
+
+The protection currently consists of following steps:
+
+* Mathematical captcha to be solved by the user.
+* Proof of work challenge calculated by the browser. The difficulty can be adjusted using :setting:`ALTCHA_MAX_NUMBER`.
 
 .. setting:: REGISTRATION_EMAIL_MATCH
 
@@ -1986,7 +2054,7 @@ example:
         "weblate.addons.gettext.GettextCustomizeAddon",
         "weblate.addons.gettext.GettextAuthorComments",
         "weblate.addons.cleanup.CleanupAddon",
-        "weblate.addons.consistency.LangaugeConsistencyAddon",
+        "weblate.addons.consistency.LanguageConsistencyAddon",
         "weblate.addons.discovery.DiscoveryAddon",
         "weblate.addons.flags.SourceEditAddon",
         "weblate.addons.flags.TargetEditAddon",
@@ -2114,6 +2182,10 @@ Configuring version control credentials
 The configuration dictionary consists of credentials defined for each API host.
 The API host might be different from what you use in the web browser, for
 example GitHub API is accessed as ``api.github.com``.
+
+The credentials can also be overridden in :ref:`component-push` or
+:ref:`component-repo` (if push URL is not configured), these take precedence
+over the ones specified in the configuration file.
 
 The following configuration is available for each host:
 

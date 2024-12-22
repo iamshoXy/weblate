@@ -20,38 +20,44 @@ permissions:
 
 jobs:
   test:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     continue-on-error: ${{ matrix.experimental }}
     strategy:
       matrix:
         python-version:
-        - '3.10'
         - '3.11'
-        - '3.12'
-        requirements: [latest]
-        database: [postgresql]
+        - '3.13'
+        requirements:
+        - latest
+        database:
+        - postgresql
         experimental: [false]
         include:
-          # Reduced testing for mysql
-        - python-version: 3.11
+        # Reduced testing for mysql
+        - python-version: '3.13'
           requirements: latest
           database: mysql
           experimental: false
-          # Reduced testing for mariadb
-        - python-version: 3.11
+        # Reduced testing for mariadb
+        - python-version: '3.13'
           requirements: latest
           database: mariadb
           experimental: false
-          # Reduced testing for minimal deps
-        - python-version: '3.10'
+        # Reduced testing for minimal deps
+        - python-version: '3.11'
           requirements: minimal
           database: postgresql
           experimental: false
-          # Reduced testing for edge deps
-        - python-version: 3.11
+        # Reduced testing for edge deps
+        - python-version: '3.13'
           requirements: edge
           database: postgresql
           experimental: true
+        # Test with Python 3.12.
+        - python-version: '3.12'
+          requirements: latest
+          database: postgresql
+          experimental: false
     name: py${{ matrix.python-version }}, ${{ matrix.database }}, ${{ matrix.requirements }} deps
     env:
       CI_DATABASE: ${{ matrix.database }}
@@ -64,18 +70,17 @@ jobs:
       DJANGO_SETTINGS_MODULE: weblate.settings_test
       PYTHONWARNINGS: default,ignore:unclosed:ResourceWarning
       PYTHONUNBUFFERED: 1
-      # Configure a constant location for the uv cache
-      UV_CACHE_DIR: /tmp/.uv-cache
     steps:
     - uses: actions/checkout@v4
-    - name: Restore uv cache
-      uses: actions/cache@v4
+    - uses: actions/cache@v4
       with:
-        path: /tmp/.uv-cache
-        key: uv-${{ runner.os }}-${{ hashFiles('pyproject.toml') }}
-        restore-keys: |
-          uv-${{ runner.os }}-${{ hashFiles('pyproject.toml') }}
-          uv-${{ runner.os }}
+        path: data-test/cache/tesseract
+        key: tesseract-data
+    - uses: astral-sh/setup-uv@v5
+      with:
+        enable-cache: true
+        cache-dependency-glob: ''
+        cache-suffix: ${{ matrix.python-version }}
     - name: Start services
       run: ./ci/services-up ${{ matrix.database }}
     - name: Install apt dependencies
@@ -84,6 +89,7 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
+        allow-prereleases: true
     - name: Used versions
       run: ./ci/print-versions
     - name: Install Python dependencies
@@ -91,28 +97,28 @@ jobs:
     - name: Prepare database
       run: ./ci/prepare-database
     - name: Compile MO files
-      run: coverage run ./manage.py compilemessages
+      run: uv run --no-sources coverage run ./manage.py compilemessages
     - name: Collect static files
-      run: coverage run ./manage.py collectstatic --noinput --verbosity 0
+      run: uv run --no-sources coverage run ./manage.py collectstatic --noinput --verbosity 0
     - name: Migrate database
-      run: coverage run ./manage.py migrate --noinput --traceback
+      run: uv run --no-sources coverage run ./manage.py migrate --noinput --traceback
     - name: Django checks
-      run: coverage run ./manage.py check
+      run: uv run --no-sources coverage run ./manage.py check
     - name: Demo import
-      run: coverage run ./manage.py import_demo
+      run: uv run --no-sources coverage run ./manage.py import_demo
     - name: Test with Django
       run: |
-        pytest --junitxml=junit.xml --cov=weblate weblate
+        uv run --no-sources --all-extras pytest --junitxml=junit.xml --cov=weblate weblate
         cp .coverage .coverage.pytest
     - name: Test wsgi startup
       env:
         PYTHONPATH: .
-      run: coverage run weblate/wsgi.py
+      run: uv run --no-sources coverage run weblate/wsgi.py
     - name: Coverage
       run: |
-        coverage combine
-        coverage xml
-    - uses: codecov/codecov-action@v4
+        uv run --no-sources coverage combine
+        uv run --no-sources coverage xml
+    - uses: codecov/codecov-action@v5
       with:
         token: ${{secrets.CODECOV_TOKEN}}
         flags: unittests
@@ -129,8 +135,6 @@ jobs:
         key: python
         coverage-file: coverage.xml
         dsn: ${{ secrets.DEEPSOURCE_DSN }}
-    - name: Minimize uv cache
-      run: uv cache prune --ci
     - name: Stop services
       if: always()
       run: ./ci/services-down ${{ matrix.database }}

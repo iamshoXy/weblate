@@ -17,6 +17,7 @@ from django.apps import AppConfig
 from django.conf import settings
 from django.core.cache import cache
 from django.core.checks import CheckMessage, Error, Info, register
+from django.core.exceptions import ImproperlyConfigured
 from django.core.mail import get_connection
 from django.db import DatabaseError
 from django.db.models import CharField, TextField
@@ -25,10 +26,10 @@ from django.db.models.lookups import Lookup, Regex
 from django.utils import timezone
 from packaging.version import Version
 
-from weblate.utils.urls import register_weblate_converters
-
 from .celery import is_celery_queue_long
 from .checks import weblate_check
+from .classloader import ClassLoader
+from .const import HEARTBEAT_FREQUENCY
 from .data import data_dir
 from .db import (
     MySQLSearchLookup,
@@ -155,7 +156,11 @@ def check_celery(
     heartbeat = cache.get("celery_heartbeat")
     loaded = cache.get("celery_loaded")
     now = time.time()
-    if loaded and now - loaded > 60 and (not heartbeat or now - heartbeat > 600):
+    if (
+        loaded
+        and now - loaded > HEARTBEAT_FREQUENCY
+        and (not heartbeat or now - heartbeat > HEARTBEAT_FREQUENCY * 10)
+    ):
         errors.append(
             weblate_check(
                 "weblate.C030",
@@ -186,7 +191,7 @@ def check_database(
 
     try:
         delta = measure_database_latency()
-        if delta > 100:
+        if delta > 120:
             errors.append(
                 weblate_check(
                     "weblate.C038",
@@ -215,7 +220,7 @@ def check_cache(
     """Check for sane caching."""
     errors = []
 
-    cache_backend = cast(str, settings.CACHES["default"]["BACKEND"]).split(".")[-1]
+    cache_backend = cast("str", settings.CACHES["default"]["BACKEND"]).split(".")[-1]
     if cache_backend not in GOOD_CACHE:
         errors.append(
             weblate_check(
@@ -282,6 +287,22 @@ def check_settings(
 
     if not settings.ALLOWED_HOSTS:
         errors.append(weblate_check("weblate.E015", "No allowed hosts are set up"))
+    return errors
+
+
+@register(deploy=True)
+def check_class_loader(
+    *,
+    app_configs: Sequence[AppConfig] | None,
+    databases: Sequence[str] | None,
+    **kwargs,
+) -> Iterable[CheckMessage]:
+    errors: list[CheckMessage] = []
+    for instance in ClassLoader.instances.values():
+        try:
+            instance.load_data()
+        except ImproperlyConfigured as error:
+            errors.append(weblate_check("weblate.E028", str(error)))
     return errors
 
 
@@ -465,7 +486,6 @@ class UtilsConfig(AppConfig):
 
     def ready(self) -> None:
         super().ready()
-        register_weblate_converters()
         init_error_collection()
 
         lookups: list[tuple[type[Lookup]] | tuple[type[Lookup], str]]
@@ -482,8 +502,8 @@ class UtilsConfig(AppConfig):
                 (Regex, "trgm_regex"),
             ]
 
-        lookups.append((cast(type[Lookup], MD5),))
-        lookups.append((cast(type[Lookup], Lower),))
+        lookups.append((cast("type[Lookup]", MD5),))
+        lookups.append((cast("type[Lookup]", Lower),))
 
         for lookup in lookups:
             CharField.register_lookup(*lookup)

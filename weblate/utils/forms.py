@@ -3,6 +3,8 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 from __future__ import annotations
 
+from typing import Literal
+
 from crispy_forms.layout import Div, Field
 from crispy_forms.utils import TEMPLATE_PACK
 from django import forms
@@ -13,17 +15,19 @@ from django.template.loader import render_to_string
 from django.utils.translation import gettext, gettext_lazy
 from pyparsing import ParseException
 
+from weblate.formats.helpers import CONTROLCHARS
 from weblate.trans.defines import EMAIL_LENGTH, USERNAME_LENGTH
 from weblate.trans.filter import FILTERS
 from weblate.trans.util import sort_unicode
 from weblate.utils.errors import report_error
-from weblate.utils.search import parse_query
 
 from .validators import WeblateServiceURLValidator, validate_email, validate_username
 
 
 class QueryField(forms.CharField):
-    def __init__(self, parser: str = "unit", **kwargs) -> None:
+    def __init__(
+        self, parser: Literal["unit", "user", "superuser"] = "unit", **kwargs
+    ) -> None:
         if "label" not in kwargs:
             kwargs["label"] = gettext_lazy("Query")
         if "required" not in kwargs:
@@ -34,6 +38,8 @@ class QueryField(forms.CharField):
         super().__init__(**kwargs)
 
     def clean(self, value):
+        from weblate.utils.search import parse_query
+
         if not value:
             if self.required:
                 raise ValidationError(gettext("Missing query string."))
@@ -115,6 +121,10 @@ class UserField(forms.CharField):
             if self.required:
                 raise ValidationError(gettext("Missing username or e-mail."))
             return None
+        if any(char in value for char in CONTROLCHARS):
+            raise ValidationError(
+                gettext("String contains control character: %s") % repr(value)
+            )
         try:
             return User.objects.get(Q(username=value) | Q(email=value))
         except User.DoesNotExist as error:

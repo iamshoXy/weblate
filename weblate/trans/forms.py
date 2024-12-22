@@ -7,9 +7,9 @@ from __future__ import annotations
 import copy
 import json
 import re
-from datetime import datetime, timedelta
+from datetime import datetime
 from secrets import token_hex
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, ClassVar, Literal
 
 from crispy_forms.bootstrap import InlineCheckboxes, InlineRadios, Tab, TabHolder
 from crispy_forms.helper import FormHelper
@@ -35,7 +35,7 @@ from weblate.auth.models import AuthenticatedHttpRequest, Group, User
 from weblate.checks.flags import Flags
 from weblate.checks.models import CHECKS
 from weblate.checks.utils import highlight_string
-from weblate.configuration.models import Setting
+from weblate.configuration.models import Setting, SettingCategory
 from weblate.formats.models import EXPORTERS, FILE_FORMATS
 from weblate.lang.data import BASIC_LANGUAGES
 from weblate.lang.models import Language
@@ -90,10 +90,11 @@ from weblate.vcs.models import VCS_REGISTRY
 
 if TYPE_CHECKING:
     from weblate.accounts.models import Profile
+    from weblate.trans.mixins import URLMixin
     from weblate.trans.models.translation import NewUnitParams
 
 BUTTON_TEMPLATE = """
-<button class="btn btn-default {0}" title="{1}" {2}>{3}</button>
+<button type="button" class="btn btn-default {0}" title="{1}" {2}>{3}</button>
 """
 RADIO_TEMPLATE = """
 <label class="btn btn-default {0}" title="{1}">
@@ -449,21 +450,21 @@ class ChecksumForm(forms.Form):
         self.unit_set = unit_set
         super().__init__(*args, **kwargs)
 
-    def clean_checksum(self) -> None:
+    def clean_checksum(self) -> str | None:
         """Validate whether checksum is valid and fetches unit for it."""
         if "checksum" not in self.cleaned_data:
-            return
+            return None
 
         unit_set = self.unit_set
 
+        checksum = self.cleaned_data["checksum"]
         try:
-            self.cleaned_data["unit"] = unit_set.filter(
-                id_hash=self.cleaned_data["checksum"]
-            )[0]
+            self.cleaned_data["unit"] = unit_set.filter(id_hash=checksum)[0]
         except (Unit.DoesNotExist, IndexError) as error:
             raise ValidationError(
                 gettext("The string you wanted to translate is no longer available.")
             ) from error
+        return checksum
 
 
 class UnitForm(forms.Form):
@@ -783,7 +784,6 @@ class SearchForm(forms.Form):
                 template="snippets/query-builder.html",
                 context={
                     "user": self.user,
-                    "month_ago": timezone.now() - timedelta(days=31),
                     "show_builder": show_builder,
                     "language": self.language,
                 },
@@ -928,6 +928,7 @@ class AutoForm(forms.Form):
             ("mt", gettext_lazy("Machine translation")),
         ],
         initial="others",
+        widget=forms.RadioSelect,
     )
     component = forms.ChoiceField(
         label=gettext_lazy("Component"),
@@ -969,7 +970,7 @@ class AutoForm(forms.Form):
         else:
             # Site-wide add-ons
             self.components = Component.objects.all()
-            machinery_settings = Setting.objects.get_settings_dict(Setting.CATEGORY_MT)
+            machinery_settings = Setting.objects.get_settings_dict(SettingCategory.MT)
 
         # Fetching first few entries is faster than doing a count query on possibly
         # thousands of components
@@ -1035,7 +1036,7 @@ class AutoForm(forms.Form):
         self.helper.layout = Layout(
             Field("mode"),
             Field("filter_type"),
-            InlineRadios("auto_source", id="select_auto_source"),
+            InlineRadios("auto_source"),
             Div("component", css_id="auto_source_others"),
             Div("engines", "threshold", css_id="auto_source_mt"),
         )
@@ -1175,7 +1176,19 @@ class NewLanguageForm(NewLanguageOwnerForm):
         codes = BASIC_LANGUAGES
         if settings.BASIC_LANGUAGES is not None:
             codes = settings.BASIC_LANGUAGES
-        return super().get_lang_objects().filter(code__in=codes)
+        return (
+            super()
+            .get_lang_objects()
+            .filter(
+                # Include basic languages
+                Q(code__in=codes)
+                # Include source languages in a project
+                | Q(component__project=self.component.project)
+                # Include translations in a project
+                | Q(translation__component__project=self.component.project)
+            )
+            .distinct()
+        )
 
     def __init__(self, component, *args, **kwargs) -> None:
         super().__init__(component, *args, **kwargs)
@@ -1333,7 +1346,8 @@ class ReportsForm(forms.Form):
                 translation__component=scope["component"]
             ).exclude(pk=scope["component"].source_language_id)
         else:
-            raise ValueError(f"Invalid scope: {scope}")
+            msg = f"Invalid scope: {scope}"
+            raise ValueError(msg)
         self.fields["language"].choices += languages.as_choices()
 
     def clean(self) -> None:
@@ -1416,28 +1430,25 @@ class ProjectDocsMixin(FieldDocsMixin):
 
 
 class SpamCheckMixin(forms.Form):
-    def spam_check(self, value) -> None:
-        if is_spam(value, self.request):
-            raise ValidationError(gettext("This field has been identified as spam!"))
+    spam_fields: ClassVar[tuple[str, ...]]
+
+    def clean(self) -> None:
+        data = self.cleaned_data
+        check_values: list[str] = [
+            data[field] for field in self.spam_fields if field in data
+        ]
+        if is_spam(self.request, check_values):
+            raise ValidationError(
+                gettext("This submission has been identified as spam!")
+            )
 
 
 class ComponentAntispamMixin(SpamCheckMixin):
-    def clean_agreement(self):
-        value = self.cleaned_data["agreement"]
-        self.spam_check(value)
-        return value
+    spam_fields = ("agreement",)
 
 
 class ProjectAntispamMixin(SpamCheckMixin):
-    def clean_web(self):
-        value = self.cleaned_data["web"]
-        self.spam_check(value)
-        return value
-
-    def clean_instructions(self):
-        value = self.cleaned_data["instructions"]
-        self.spam_check(value)
-        return value
+    spam_fields = ("web", "instructions")
 
 
 class ComponentSettingsForm(
@@ -1485,6 +1496,7 @@ class ComponentSettingsForm(
             "template",
             "intermediate",
             "language_regex",
+            "key_filter",
             "variant_regex",
             "restricted",
             "auto_lock_error",
@@ -1507,6 +1519,7 @@ class ComponentSettingsForm(
         self.fields["links"].queryset = request.user.managed_projects.exclude(
             pk=self.instance.project.pk
         )
+
         self.helper.layout = Layout(
             TabHolder(
                 Tab(
@@ -1597,6 +1610,7 @@ class ComponentSettingsForm(
                         "file_format",
                         "filemask",
                         "language_regex",
+                        "key_filter",
                         "source_language",
                     ),
                     Fieldset(
@@ -1648,6 +1662,12 @@ class ComponentSettingsForm(
 class ComponentCreateForm(SettingsBaseForm, ComponentDocsMixin, ComponentAntispamMixin):
     """Component creation form."""
 
+    source_component = forms.ModelChoiceField(
+        queryset=Component.objects.none(),
+        required=False,
+        widget=forms.HiddenInput(),
+    )
+
     class Meta:
         model = Component
         fields = [
@@ -1671,6 +1691,7 @@ class ComponentCreateForm(SettingsBaseForm, ComponentDocsMixin, ComponentAntispa
             "license",
             "language_code_style",
             "language_regex",
+            "key_filter",
             "source_language",
             "is_glossary",
         ]
@@ -1840,6 +1861,13 @@ class ComponentDocCreateForm(ComponentProjectForm):
         validators=[validate_file_extension],
     )
 
+    target_language = forms.ModelChoiceField(
+        widget=SortedSelect,
+        label=gettext_lazy("Target language"),
+        help_text=gettext_lazy("Target language of the document for bilingual files"),
+        queryset=Language.objects.all(),
+        required=False,
+    )
     field_order = ["docfile", "project", "name", "slug"]
 
     def __init__(self, *args, **kwargs) -> None:
@@ -1921,8 +1949,8 @@ class ComponentDiscoverForm(ComponentInitCreateForm):
         widget=forms.HiddenInput,
     )
 
-    def render_choice(self, value):
-        context = copy.copy(value)
+    def render_choice(self, value: DiscoveryResult) -> str:
+        context = value.data.copy()
         try:
             format_cls = FILE_FORMATS[value["file_format"]]
             context["file_format_name"] = format_cls.name
@@ -1943,9 +1971,10 @@ class ComponentDiscoverForm(ComponentInitCreateForm):
         # Allow all VCS now (to handle zip file upload case)
         self.fields["vcs"].choices = VCS_REGISTRY.get_choices()
         self.discovered = self.perform_discovery(request, kwargs)
-        self.fields["discovery"].choices.extend(
+        # Can not use .extend here as it does not update widget
+        self.fields["discovery"].choices += [
             (i, self.render_choice(value)) for i, value in enumerate(self.discovered)
-        )
+        ]
 
     def perform_discovery(self, request: AuthenticatedHttpRequest, kwargs):
         if "data" in kwargs and "create_discovery" in request.session:
@@ -1962,7 +1991,7 @@ class ComponentDiscoverForm(ComponentInitCreateForm):
                 discovered = self.discover(eager=True)
         except ValidationError:
             discovered = []
-        request.session["create_discovery"] = discovered
+        request.session["create_discovery"] = [x.data for x in discovered]
         request.session["create_discovery_meta"] = [x.meta for x in discovered]
         return discovered
 
@@ -2287,6 +2316,7 @@ class ReplaceForm(forms.Form):
         required=False,
         help_text=gettext_lazy("Optional additional filter applied to the strings"),
     )
+    path = forms.CharField(widget=forms.HiddenInput, required=False)
     search = forms.CharField(
         label=gettext_lazy("Search string"),
         min_length=1,
@@ -2301,13 +2331,15 @@ class ReplaceForm(forms.Form):
         strip=False,
     )
 
-    def __init__(self, *args, **kwargs) -> None:
-        kwargs["auto_id"] = "id_replace_%s"
-        super().__init__(*args, **kwargs)
+    def __init__(self, obj: URLMixin, data: dict | None = None) -> None:
+        super().__init__(
+            data=data, auto_id="id_replace_%s", initial={"path": obj.full_slug}
+        )
         self.helper = FormHelper(self)
         self.helper.form_tag = False
         self.helper.layout = Layout(
             SearchField("q"),
+            Field("path"),
             Field("search"),
             Field("replacement"),
             Div(template="snippets/replace-help.html"),
@@ -2567,6 +2599,7 @@ class BulkEditForm(forms.Form):
         label=gettext_lazy("State to set"),
         choices=[(-1, gettext_lazy("Do not change"))],
     )
+    path = forms.CharField(widget=forms.HiddenInput, required=False)
     add_flags = FlagField(
         label=gettext_lazy("Translation flags to add"), required=False
     )
@@ -2586,9 +2619,13 @@ class BulkEditForm(forms.Form):
         required=False,
     )
 
-    def __init__(self, user: User | None, obj, *args, **kwargs) -> None:
+    def __init__(
+        self, user: User | None, obj: URLMixin | None, *args, **kwargs
+    ) -> None:
         project = kwargs.pop("project", None)
         kwargs["auto_id"] = "id_bulk_%s"
+        if obj is not None:
+            kwargs["initial"] = {"path": obj.full_slug}
         super().__init__(*args, **kwargs)
         labels = Label.objects.all() if project is None else project.label_set.all()
         if labels:
@@ -2603,6 +2640,10 @@ class BulkEditForm(forms.Form):
 
         # Filter offered states
         choices = self.fields["state"].choices
+
+        # Special case for list_addons
+        if isinstance(obj, Component) and obj.pk == -1:
+            show_review = False
         choices.extend(
             (state, get_state_label(state, label, show_review))
             for state, label in StringState.choices
@@ -2615,6 +2656,7 @@ class BulkEditForm(forms.Form):
         self.helper.layout = Layout(
             Div(template="snippets/bulk-help.html"),
             SearchField("q"),
+            Field("path"),
             Field("state"),
             Field("add_flags"),
             Field("remove_flags"),
@@ -2906,16 +2948,19 @@ class WorkflowSettingForm(FieldDocsMixin, forms.ModelForm):
         data=None,
         files=None,
         *,
-        instance=None,
+        instance: WorkflowSetting | None = None,
         prefix=None,
         initial=None,
         project: Project | None = None,
         **kwargs,
     ) -> None:
         if instance is not None:
+            # The enable field indicates presence of the instance,
+            # untoggling it removes it
             initial = {"enable": True}
-            if project is not None:
-                initial["translation_review"] = project.translation_review
+        elif project is not None:
+            # Default review setting based on the project one
+            initial = {"translation_review": project.translation_review}
 
         self.project = project
         self.instance = instance
@@ -2945,7 +2990,18 @@ class WorkflowSettingForm(FieldDocsMixin, forms.ModelForm):
             ),
         )
 
-    def save(self, commit=True):
+    def clean_translation_review(self) -> bool | None:
+        if "translation_review" not in self.cleaned_data:
+            return None
+        translation_review = self.cleaned_data["translation_review"]
+        if not self.project:
+            return translation_review
+        if translation_review and not self.project.enable_review:
+            msg = "Please turn on reviews on the project first."
+            raise ValidationError(msg)
+        return translation_review
+
+    def save(self, commit: bool = True):
         if self.cleaned_data["enable"]:
             return super().save(commit=commit)
         if self.instance and self.instance.pk:

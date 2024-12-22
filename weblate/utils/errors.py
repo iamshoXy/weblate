@@ -35,7 +35,7 @@ except ImportError:
 
 
 def report_error(
-    cause: str = "Handled exception",
+    cause: str,
     *,
     level: Literal[
         "fatal", "critical", "error", "warning", "info", "debug"
@@ -129,6 +129,7 @@ def init_sentry() -> None:
             "weblate_fedora_messaging",
             "weblate_language_data",
             "translate",
+            "translation_finder",
         ],
         attach_stacktrace=True,
         _experiments={"max_spans": 2000},

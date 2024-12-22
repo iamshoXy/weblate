@@ -30,6 +30,7 @@ from weblate_language_data.rtl import RTL_LANGS
 from weblate.checks.format import BaseFormatCheck
 from weblate.checks.models import CHECKS
 from weblate.lang import data
+from weblate.lang.data import FORMULA_WITH_ZERO
 from weblate.logger import LOGGER
 from weblate.trans.defines import LANGUAGE_CODE_LENGTH, LANGUAGE_NAME_LENGTH
 from weblate.trans.mixins import CacheKeyMixin
@@ -166,8 +167,7 @@ class LanguageQuerySet(models.QuerySet):
     def sanitize_code(code):
         """Language code sanitization."""
         # Strip b+ prefix from Android
-        if code.startswith("b+"):
-            code = code[2:]
+        code = code.removeprefix("b+")
 
         # Replace -r from Android by _
         if len(code) == 6 and "-r" in code:
@@ -461,7 +461,7 @@ class LanguageManager(models.Manager.from_queryset(LanguageQuerySet)):
         """Return English language object."""
         return self.get(code=settings.DEFAULT_LANGUAGE, skip_cache=True)
 
-    def setup(self, update, logger=lambda x: x) -> None:
+    def setup(self, update, logger=lambda x: x) -> None:  # noqa: C901
         """
         Create basic set of languages.
 
@@ -472,8 +472,11 @@ class LanguageManager(models.Manager.from_queryset(LanguageQuerySet)):
 
         # Invalidate cache, we might change languages
         self.flush_object_cache()
-        languages = {language.code: language for language in self.prefetch()}
-        plurals: dict[str, dict[int, list[str]]] = {}
+        languages = {
+            language.code: language
+            for language in self.prefetch().iterator(chunk_size=1000)
+        }
+        plurals: dict[str, dict[int, list[Plural]]] = {}
         # Create Weblate languages
         for code, name, nplurals, plural_formula in LANGUAGES:
             population = POPULATION[code]
@@ -506,7 +509,7 @@ class LanguageManager(models.Manager.from_queryset(LanguageQuerySet)):
 
             # Fetch existing plurals
             plurals[code] = defaultdict(list)
-            for plural in lang.plural_set.iterator():
+            for plural in lang.plural_set.all():
                 plurals[code][plural.source].append(plural)
 
             if Plural.SOURCE_DEFAULT in plurals[code]:
@@ -556,7 +559,34 @@ class LanguageManager(models.Manager.from_queryset(LanguageQuerySet)):
                         formula=plural_formula,
                         type=get_plural_type(lang.base_code, plural_formula),
                     )
+                    plurals[code][source].append(plural)
                     logger(f"Created plural {plural_formula} for language {code}")
+
+                # CLDR and QT plurals should have just a single of them
+                if source != Plural.SOURCE_GETTEXT and len(plurals[code][source]) > 1:
+                    logger(
+                        f"Removing extra {source} plurals for language {code} ({len(plurals[code][source])})!"
+                    )
+                    for extra_plural in plurals[code][source]:
+                        if extra_plural != plural:
+                            extra_plural.translation_set.update(plural=plural)
+                            extra_plural.delete()
+                    plurals[code][source] = [plural]
+
+        # Sync FORMULA_WITH_ZERO
+        for code, language_plurals in plurals.items():
+            if Plural.SOURCE_CLDR_ZERO in language_plurals:
+                if Plural.SOURCE_CLDR in language_plurals:
+                    cldr_plural = language_plurals[Plural.SOURCE_CLDR][0]
+                else:
+                    cldr_plural = language_plurals[Plural.SOURCE_DEFAULT][0]
+                zero_plural = language_plurals[Plural.SOURCE_CLDR_ZERO][0]
+                current_formula = FORMULA_WITH_ZERO[cldr_plural.formula]
+                if zero_plural.formula != current_formula:
+                    logger(f"Updating CLDR plural with zero for {code}")
+                    zero_plural.formula = current_formula
+                    zero_plural.number = cldr_plural.number + 1
+                    zero_plural.save(update_fields=["formula", "number"])
 
         self._fixup_plural_types(logger)
 
@@ -569,7 +599,8 @@ class LanguageManager(models.Manager.from_queryset(LanguageQuerySet)):
                 language = plural.language
                 newtype = get_plural_type(language.base_code, plural.formula)
                 if newtype == data.PLURAL_UNKNOWN:
-                    raise ValueError(f"Invalid plural type of {plural.formula}")
+                    msg = f"Invalid plural type of {plural.formula}"
+                    raise ValueError(msg)
                 if newtype != plural.type:
                     plural.type = newtype
                     plural.save(update_fields=["type"])
@@ -599,7 +630,7 @@ class Language(models.Model, CacheKeyMixin):
         max_length=3,
         default="",
         choices=(
-            ("", ""),
+            ("", gettext_lazy("Automatically detect text direction")),
             ("ltr", gettext_lazy("Left to right")),
             ("rtl", gettext_lazy("Right to left")),
         ),
@@ -629,7 +660,7 @@ class Language(models.Model, CacheKeyMixin):
             self.direction = self.guess_direction()
         return super().save(*args, **kwargs)
 
-    def get_absolute_url(self):
+    def get_absolute_url(self) -> str:
         return reverse("show_language", kwargs={"lang": self.code})
 
     def get_url_path(self):
@@ -680,8 +711,17 @@ class Language(models.Model, CacheKeyMixin):
                     return plural
         return self.plural_set.filter(source=Plural.SOURCE_DEFAULT)[0]
 
-    def get_aliases_names(self):
-        return [alias for alias, codename in ALIASES.items() if codename == self.code]
+    def get_aliases_names(self) -> list[str]:
+        aliases: list[str] = [
+            alias for alias, codename in ALIASES.items() if codename == self.code
+        ]
+        if settings.SIMPLIFY_LANGUAGES:
+            aliases.extend(
+                default_lang
+                for default_lang in DEFAULT_LANGS
+                if default_lang.startswith(self.code)
+            )
+        return sorted(aliases)
 
     def is_base(self, vals: tuple[str, ...]) -> bool:
         """Detect whether language is in given list, ignores variants."""
@@ -846,7 +886,7 @@ class Plural(models.Model):
         self.type = get_plural_type(self.language.base_code, self.formula)
         super().save(*args, **kwargs)
 
-    def get_absolute_url(self):
+    def get_absolute_url(self) -> str:
         return "{}#information".format(
             reverse("show_language", kwargs={"lang": self.language.code})
         )
@@ -860,9 +900,8 @@ class Plural(models.Model):
         try:
             return c2py(self.formula or "0")
         except ValueError as error:
-            raise ValueError(
-                f"Could not compile formula {self.formula!r}: {error}"
-            ) from error
+            msg = f"Could not compile formula {self.formula!r}: {error}"
+            raise ValueError(msg) from error
 
     @cached_property
     def examples(self) -> dict[int, list[str]]:
@@ -882,7 +921,8 @@ class Plural(models.Model):
     def parse_plural_forms(plurals):
         matches = PLURAL_RE.match(plurals)
         if matches is None:
-            raise ValueError("Could not parse plural forms")
+            msg = "Could not parse plural forms"
+            raise ValueError(msg)
 
         number = int(matches.group(1))
         formula = matches.group(2)
@@ -1027,13 +1067,11 @@ class PluralMapper:
 
     def zip(self, sources: list[str], targets: list[str], unit: Unit):
         if len(sources) != self.source_plural.number:
-            raise ValueError(
-                "length of `sources` doesn't match the number of source plurals"
-            )
+            msg = "length of `sources` doesn't match the number of source plurals"
+            raise ValueError(msg)
         if len(targets) != self.target_plural.number:
-            raise ValueError(
-                "length of `targets` doesn't match the number of target plurals"
-            )
+            msg = "length of `targets` doesn't match the number of target plurals"
+            raise ValueError(msg)
         if self.same_plurals:
             return zip(sources, targets, strict=True)
         return [

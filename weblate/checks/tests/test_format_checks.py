@@ -760,6 +760,11 @@ class JavaFormatCheckTest(CheckTestCase):
     def test_escaping(self) -> None:
         self.assertFalse(self.check.check_format("%% s %%", "string", False, None))
 
+    def test_escaping_translation(self) -> None:
+        self.assertFalse(
+            self.check.check_format("Something failed", "Something %%s", False, None)
+        )
+
     def test_format(self) -> None:
         self.assertFalse(self.check.check_format("%s string", "%s string", False, None))
 
@@ -1624,5 +1629,20 @@ class MultipleUnnamedFormatsCheckTestCase(SimpleTestCase):
         self.assertFalse(
             self.check.check_source(
                 ["Test %s"], MockUnit(flags="c-format,python-format")
+            )
+        )
+
+    def test_good_brace_format(self) -> None:
+        self.assertFalse(
+            self.check.check_source(
+                ["Recognition {progress}% ({current_job}/{total_jobs})"],
+                MockUnit(flags="python-brace-format"),
+            )
+        )
+
+    def test_bad_brace_format(self) -> None:
+        self.assertTrue(
+            self.check.check_source(
+                ["Recognition {}% ({}/{})"], MockUnit(flags="python-brace-format")
             )
         )

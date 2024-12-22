@@ -8,11 +8,12 @@ weblate-*.tar.*
 /weblate/settings.py
 /reports/
 /tags
+/prof
 /junit.xml
 .idea/*
 *.sublime-*
 .vscode/*
-/Weblate.egg-info/
+/weblate.egg-info/
 /build/
 /data/
 /data-test/
@@ -34,4 +35,6 @@ weblate-*.tar.*
 *~
 /.dmypy.json
 /fil-result/
+/weblate/static/js/vendor/oss-licenses.json
 *node_modules/
+/weblate-openapi.yaml

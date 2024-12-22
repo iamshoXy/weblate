@@ -24,6 +24,7 @@ from social_django.utils import load_strategy
 
 from weblate.auth.models import AuthenticatedHttpRequest, get_auth_backends
 from weblate.lang.models import Language
+from weblate.logger import LOGGER
 from weblate.trans.models import Change, Component, Project
 from weblate.utils.errors import report_error
 from weblate.utils.site import get_site_url
@@ -45,6 +46,7 @@ if TYPE_CHECKING:
         "base-uri",
         "form-action",
         "manifest-src",
+        "worker-src",
     ]
     CSP_TYPE = dict[CSP_KIND, set[str]]
 
@@ -61,10 +63,15 @@ CSP_DIRECTIVES: CSP_TYPE = {
     "base-uri": {"'none'"},
     "form-action": {"'self'"},
     "manifest-src": {"'self'"},
+    # Used by altcha
+    "worker-src": {"'self'", "blob:"},
 }
 
 # URLs requiring inline javascript
-INLINE_PATHS = {"social:begin", "djangosaml2idp:saml_login_process"}
+INLINE_PATHS = {
+    "social:begin",
+    "djangosaml2idp:saml_login_process",
+}
 
 
 class ProxyMiddleware:
@@ -110,7 +117,7 @@ class RedirectMiddleware:
     def __init__(self, get_response=None) -> None:
         self.get_response = get_response
 
-    def __call__(self, request: AuthenticatedHttpRequest):
+    def __call__(self, request: AuthenticatedHttpRequest) -> HttpResponse:
         response = self.get_response(request)
         # This is based on APPEND_SLASH handling in Django
         if response.status_code == 404 and self.should_redirect_with_slash(request):
@@ -120,7 +127,7 @@ class RedirectMiddleware:
             return HttpResponsePermanentRedirect(new_path)
         return response
 
-    def should_redirect_with_slash(self, request: AuthenticatedHttpRequest):
+    def should_redirect_with_slash(self, request: AuthenticatedHttpRequest) -> bool:
         path = request.path_info
         # Avoid redirecting non GET requests, these would fail anyway due to
         # missing parameters.
@@ -130,30 +137,39 @@ class RedirectMiddleware:
         if (
             path.endswith(("/", ".map"))
             or request.method != "GET"
-            or path.startswith(f"{settings.URL_PREFIX}/api")
+            or (
+                path.startswith(f"{settings.URL_PREFIX}/api")
+                and not path.startswith(f"{settings.URL_PREFIX}/api/doc")
+                and not path.startswith(f"{settings.URL_PREFIX}/api/schema")
+            )
         ):
             return False
         urlconf = getattr(request, "urlconf", None)
         slash_path = f"{path}/"
-        return not is_valid_path(path, urlconf) and is_valid_path(slash_path, urlconf)
+        return not is_valid_path(path, urlconf) and bool(
+            is_valid_path(slash_path, urlconf)
+        )
 
     def fixup_language(self, lang: str) -> Language | None:
         return Language.objects.fuzzy_get_strict(code=lang)
 
-    def fixup_project(self, slug, request: AuthenticatedHttpRequest):
+    def fixup_project(self, slug, request: AuthenticatedHttpRequest) -> Project | None:
+        project: Project | None
         try:
             project = Project.objects.get(slug__iexact=slug)
         except Project.MultipleObjectsReturned:
             return None
         except Project.DoesNotExist:
             project = Change.objects.lookup_project_rename(slug)
-            if project is None:
-                return None
+        if project is None:
+            return None
 
         request.user.check_access(project)
         return project
 
-    def fixup_component(self, slug, request: AuthenticatedHttpRequest, project):
+    def fixup_component(
+        self, slug: str, request: AuthenticatedHttpRequest, project: Project
+    ) -> Component | None:
         try:
             # Try uncategorized component first
             component = project.component_set.get(category=None, slug__iexact=slug)
@@ -177,7 +193,7 @@ class RedirectMiddleware:
         request.user.check_access_component(component)
         return component
 
-    def check_existing_translations(self, name: str, project: Project):
+    def check_existing_translations(self, name: str, project: Project) -> bool:
         """
         Check in existing translations for specific language.
 
@@ -185,7 +201,9 @@ class RedirectMiddleware:
         """
         return any(lang.name == name for lang in project.languages)
 
-    def process_exception(self, request: AuthenticatedHttpRequest, exception):  # noqa: C901
+    def process_exception(  # noqa: C901
+        self, request: AuthenticatedHttpRequest, exception
+    ) -> HttpResponse | None:
         from weblate.utils.views import UnsupportedPathObjectError
 
         if not isinstance(exception, Http404):
@@ -290,8 +308,6 @@ class CSPBuilder:
         self.response = response
         self.apply_csp_settings()
         self.build_csp_inline()
-        self.build_csp_support()
-        self.build_csp_rollbar()
         self.build_csp_sentry()
         self.build_csp_piwik()
         self.build_csp_google_analytics()
@@ -299,6 +315,7 @@ class CSPBuilder:
         self.build_csp_static_url()
         self.build_csp_cdn()
         self.build_csp_auth()
+        self.build_csp_redoc()
 
     def apply_csp_settings(self) -> None:
         setting_names: dict[str, CSP_KIND] = {
@@ -314,12 +331,29 @@ class CSPBuilder:
             if value:
                 self.directives[rule].update(value)
 
-    def add_csp_host(self, url: str, *directives: CSP_KIND) -> None | str:
+    def add_csp_host(self, url: str, *directives: CSP_KIND) -> str | None:
         domain = urlparse(url).hostname
+        # Handle domain only URLs (OpenInfraOpenId uses that)
+        if not domain and ":" not in url and "/" not in url:
+            domain = url
         if domain:
             for directive in directives:
                 self.directives[directive].add(domain)
+        else:
+            LOGGER.error(
+                "could not parse domain from '%s', not adding to Content-Security-Policy",
+                url,
+            )
+
         return domain
+
+    def build_csp_redoc(self) -> None:
+        if (
+            self.request.resolver_match
+            and self.request.resolver_match.view_name == "redoc"
+        ):
+            self.directives["script-src"].add("'unsafe-inline'")
+            self.directives["img-src"].add("data:")
 
     def build_csp_inline(self) -> None:
         if (
@@ -328,38 +362,15 @@ class CSPBuilder:
         ):
             self.directives["script-src"].add("'unsafe-inline'")
 
-    def build_csp_support(self) -> None:
-        # Support form
-        if (
-            self.request.resolver_match
-            and self.request.resolver_match.view_name == "manage"
-        ):
-            self.directives["script-src"].add("care.weblate.org")
-            self.directives["connect-src"].add("care.weblate.org")
-            self.directives["style-src"].add("care.weblate.org")
-            self.directives["form-action"].add("care.weblate.org")
-
-    def build_csp_rollbar(self) -> None:
-        # Rollbar client errors reporting
-        if (
-            (rollbar_settings := getattr(settings, "ROLLBAR", None)) is not None
-            and "client_token" in rollbar_settings
-            and "environment" in rollbar_settings
-            and self.response.status_code == 500
-        ):
-            self.directives["script-src"].add("'unsafe-inline'")
-            self.directives["script-src"].add("cdnjs.cloudflare.com")
-            self.directives["connect-src"].add("api.rollbar.com")
-
     def build_csp_sentry(self) -> None:
         # Sentry user feedback
         if settings.SENTRY_DSN and self.response.status_code == 500:
             domain = self.add_csp_host(settings.SENTRY_DSN, "script-src", "connect-src")
             # Add appropriate frontend servers for sentry.io
-            if domain.endswith("de.sentry.io"):
+            if domain.endswith(".de.sentry.io"):
                 self.directives["connect-src"].add("de.sentry.io")
                 self.directives["script-src"].add("de.sentry.io")
-            elif domain.endswith("sentry.io"):
+            elif domain.endswith(".sentry.io"):
                 self.directives["script-src"].add("sentry.io")
                 self.directives["connect-src"].add("sentry.io")
             self.directives["script-src"].add("'unsafe-inline'")
@@ -412,14 +423,32 @@ class CSPBuilder:
             else:
                 social_strategy = load_strategy(self.request)
             for backend in get_auth_backends().values():
-                url = ""
+                urls: list[str] = []
+
                 # Handle OpenId redirect flow
                 if issubclass(backend, OpenIdAuth):
-                    url = backend(social_strategy).openid_url()
+                    urls = [backend(social_strategy).openid_url()]
+
                 # Handle OAuth redirect flow
-                if issubclass(backend, OAuthAuth):
-                    url = backend(social_strategy).authorization_url()
-                if url:
+                elif issubclass(backend, OAuthAuth):
+                    urls = [backend(social_strategy).authorization_url()]
+
+                # Handle SAML redirect flow
+                elif hasattr(backend, "get_idp"):
+                    # Lazily import here to avoid pulling in xmlsec
+                    from social_core.backends.saml import SAMLAuth
+
+                    assert issubclass(backend, SAMLAuth)  # noqa: S101
+
+                    saml_auth = backend(social_strategy)
+                    urls = [
+                        saml_auth.get_idp(idp_name).sso_url
+                        for idp_name in getattr(
+                            settings, "SOCIAL_AUTH_SAML_ENABLED_IDPS", {}
+                        )
+                    ]
+
+                for url in urls:
                     self.add_csp_host(url, "form-action")
 
 
