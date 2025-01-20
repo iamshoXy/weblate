@@ -34,7 +34,7 @@ function decreaseLoading(sel) {
 function addAlert(message, kind = "danger", delay = 3000) {
   const alerts = $("#popup-alerts");
   const e = $(
-    '<div class="alert alert-dismissible" role="alert"><button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>',
+    '<div class="alert alert-dismissible" role="alert"><button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>'
   );
   e.addClass(`alert-${kind}`);
   e.append(new Text(message));
@@ -101,7 +101,7 @@ jQuery.fn.extend({
   },
 });
 
-function submitForm(evt, _combo, selector) {
+function submitForm(evt, combo, selector) {
   const $target = $(evt.target);
   let $form = $target.closest("form");
 
@@ -151,7 +151,7 @@ function screenshotAddString() {
         list.find("table").replaceWith(data);
       });
     },
-    error: (_jqXhr, _textStatus, errorThrown) => {
+    error: (jqXhr, textStatus, errorThrown) => {
       addAlert(errorThrown);
     },
   });
@@ -159,9 +159,7 @@ function screenshotAddString() {
 
 function screenshotResultError(severity, message) {
   $("#search-results tbody.unit-listing-body").html(
-    $("<tr/>")
-      .addClass(severity)
-      .html($('<td colspan="4"></td>').text(message)),
+    $("<tr/>").addClass(severity).html($('<td colspan="4"></td>').text(message))
   );
 }
 
@@ -172,7 +170,7 @@ function screenshotLoaded(data) {
   } else if (data.results.length === 0) {
     screenshotResultError(
       "warning",
-      gettext("No new matching source strings found."),
+      gettext("No new matching source strings found.")
     );
   } else {
     $("#search-results table").replaceWith(data.results);
@@ -213,7 +211,7 @@ function compareCells(a, b) {
   if (a.indexOf("%") !== -1 && b.indexOf("%") !== -1) {
     return _compareValues(
       Number.parseFloat(a.replace(",", ".")),
-      Number.parseFloat(b.replace(",", ".")),
+      Number.parseFloat(b.replace(",", "."))
     );
   }
   const parsedA = getNumber(a);
@@ -280,7 +278,7 @@ function loadTableSorting() {
                   inverse *
                   compareCells(
                     extractText($a.find("td,th")[myIndex]),
-                    extractText($b.find("td,th")[myIndex]),
+                    extractText($b.find("td,th")[myIndex])
                   )
                 );
               })
@@ -292,7 +290,7 @@ function loadTableSorting() {
               $(this).find(".sort-icon").addClass("sort-up");
             }
 
-            inverse *= -1;
+            inverse = inverse * -1;
           });
         }
         // Increase index
@@ -314,7 +312,6 @@ function pgettext(context, msgid) {
   }
   return msgid;
 }
-// biome-ignore lint/correctness/noUnusedVariables: Global function
 function interpolate(fmt, obj, named) {
   if (typeof django !== "undefined") {
     return django.interpolate(fmt, obj, named);
@@ -405,14 +402,14 @@ function initHighlight(root) {
       highlight.innerHTML = Prism.highlight(
         input.value,
         Prism.languages.weblatesearch,
-        "weblatesearch",
+        "weblatesearch"
       );
     };
     syncContent();
     input.addEventListener("input", syncContent);
 
     /* Handle scrolling */
-    input.addEventListener("scroll", (_event) => {
+    input.addEventListener("scroll", (event) => {
       highlight.scrollTop = input.scrollTop;
       highlight.scrollLeft = input.scrollLeft;
     });
@@ -431,8 +428,6 @@ function initHighlight(root) {
     resizeObserver.observe(input);
   });
   // biome-ignore lint/complexity/noForEach: TODO
-  // biome-ignore lint/complexity/useSimplifiedLogicExpression: TODO
-  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: TODO
   root.querySelectorAll(".highlight-editor").forEach((editor) => {
     const parent = editor.parentElement;
     const hasFocus = editor === document.activeElement;
@@ -482,30 +477,23 @@ function initHighlight(root) {
       const whitespaceRegex = new RegExp(
         [
           "  +|(^) +| +(?=$)| +\n|\n +|\t|",
-          "\u00AD|\u1680|\u2000|\u2001|",
+          "\u00A0|\u00AD|\u1680|\u2000|\u2001|",
           "\u2002|\u2003|\u2004|\u2005|",
           "\u2006|\u2007|\u2008|\u2009|",
           "\u200A|\u202F|\u205F|\u3000",
-        ].join(""),
+        ].join("")
       );
-      // biome-ignore lint/performance/useTopLevelRegex: TODO
-      const newlineRegex = /\n/;
-      // biome-ignore lint/performance/useTopLevelRegex: TODO
-      const nonBreakingSpaceRegex = /\u00A0/;
       const extension = {
         hlspace: {
           pattern: whitespaceRegex,
           lookbehind: true,
         },
         newline: {
-          pattern: newlineRegex,
-        },
-        nbsp: {
-          pattern: nonBreakingSpaceRegex,
+          pattern: /\n/,
         },
       };
       if (placeables) {
-        extension.placeable = new RegExp(placeables);
+        extension.placeable = RegExp(placeables);
       }
       /*
        * We can not use Prism.extend here as we want whitespace highlighting
@@ -527,7 +515,7 @@ function initHighlight(root) {
     editor.addEventListener("input", syncContent);
 
     /* Handle scrolling */
-    editor.addEventListener("scroll", (_event) => {
+    editor.addEventListener("scroll", (event) => {
       highlight.scrollTop = editor.scrollTop;
       highlight.scrollLeft = editor.scrollLeft;
     });
@@ -549,7 +537,6 @@ function initHighlight(root) {
   });
 }
 
-// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: TODO
 $(function () {
   const $window = $(window);
   const $document = $(document);
@@ -574,18 +561,14 @@ $(function () {
       $content.load($target.data("href"), (responseText, status, xhr) => {
         if (status !== "success") {
           const msg = gettext("Error while loading page:");
-          $content.html(
-            `<div class="alert alert-danger" role="alert">
-                ${msg} ${xhr.statusText} (${xhr.status})
-              </div>
-            `,
+          $content.text(
+            `${msg} ${xhr.statusText} (${xhr.status}): ${responseText}`
           );
-          console.error(xhr.statusText, xhr.status, responseText);
         }
         $target.data("loaded", 1);
         loadTableSorting();
       });
-    },
+    }
   );
 
   if ($("#form-activetab").length > 0) {
@@ -608,7 +591,7 @@ $(function () {
     const separator = location.hash.indexOf("__");
     if (separator !== -1) {
       activeTab = $(
-        `.nav [data-toggle=tab][href="${location.hash.substr(0, separator)}"]`,
+        `.nav [data-toggle=tab][href="${location.hash.substr(0, separator)}"]`
       );
       if (activeTab.length > 0) {
         activeTab.tab("show");
@@ -630,7 +613,7 @@ $(function () {
   ) {
     /* From local storage */
     activeTab = $(
-      `[data-toggle=tab][href="${localStorage.getItem("translate-tab")}"]`,
+      `[data-toggle=tab][href="${localStorage.getItem("translate-tab")}"]`
     );
     if (activeTab.length > 0) {
       activeTab.tab("show");
@@ -638,18 +621,18 @@ $(function () {
   }
 
   /* Add a hash to the URL when the user clicks on a tab */
-  $('a[data-toggle="tab"]').on("shown.bs.tab", function (_e) {
+  $('a[data-toggle="tab"]').on("shown.bs.tab", function (e) {
     history.pushState(null, null, $(this).attr("href"));
     /* Remove focus on rows */
     $(".selectable-row").removeClass("active");
   });
 
   /* Navigate to a tab when the history changes */
-  window.addEventListener("popstate", (_e) => {
+  window.addEventListener("popstate", (e) => {
     if (location.hash !== "") {
       activeTab = $(`[data-toggle=tab][href="${location.hash}"]`);
     } else {
-      activeTab = new Array();
+      activeTab = Array();
     }
     if (activeTab.length > 0) {
       activeTab.tab("show");
@@ -669,6 +652,7 @@ $(function () {
 
   /* Announcement discard */
   $(".alert").on("close.bs.alert", function () {
+    const $this = $(this);
     const $form = $("#link-post");
 
     const action = this.getAttribute("data-action");
@@ -681,7 +665,7 @@ $(function () {
           csrfmiddlewaretoken: $form.find("input").val(),
           id: this.getAttribute("data-id"),
         },
-        error: (_jqXhr, _textStatus, errorThrown) => {
+        error: (jqXhr, textStatus, errorThrown) => {
           addAlert(errorThrown);
         },
       });
@@ -689,7 +673,7 @@ $(function () {
   });
 
   /* Widgets selector */
-  $(".select-tab").on("change", function (_e) {
+  $(".select-tab").on("change", function (e) {
     $(this).parent().find(".tab-pane").removeClass("active");
     $(`#${$(this).val()}`).addClass("active");
   });
@@ -807,7 +791,7 @@ $(function () {
       }
     });
     /* Save on submit */
-    $forms.submit(function (_e) {
+    $forms.submit(function (e) {
       const data = {};
       const $this = $(this);
 
@@ -838,10 +822,9 @@ $(function () {
   });
 
   /* Copy to clipboard */
-  $(document).on("click", "[data-clipboard-value]", function (e) {
-    e.preventDefault();
+  $("[data-clipboard-text]").on("click", function (e) {
     navigator.clipboard
-      .writeText(this.getAttribute("data-clipboard-value"))
+      .writeText(this.getAttribute("data-clipboard-text"))
       .then(
         () => {
           const text =
@@ -851,8 +834,9 @@ $(function () {
         },
         () => {
           addAlert(gettext("Please press Ctrl+C to copy."), "danger");
-        },
+        }
       );
+    e.preventDefault();
   });
 
   /* Auto translate source select */
@@ -872,13 +856,9 @@ $(function () {
 
   /* Override all multiple selects */
   $("select[multiple]").multi({
-    // biome-ignore lint/style/useNamingConvention: need to match the library
     enable_search: true,
-    // biome-ignore lint/style/useNamingConvention: need to match the library
     search_placeholder: gettext("Search…"),
-    // biome-ignore lint/style/useNamingConvention: need to match the library
     non_selected_header: gettext("Available:"),
-    // biome-ignore lint/style/useNamingConvention: need to match the library
     selected_header: gettext("Chosen:"),
   });
 
@@ -891,7 +871,7 @@ $(function () {
       .find('input[name="name"]')
       .on("change keypress keydown keyup paste", function () {
         $slug.val(
-          slugify($(this).val(), { remove: /[^\w\s-]+/g }).toLowerCase(),
+          slugify($(this).val(), { remove: /[^\w\s-]+/g }).toLowerCase()
         );
       });
   });
@@ -917,7 +897,7 @@ $(function () {
       $.ajax({
         url: url,
         type: "get",
-        error: (xmlHttpRequest, _textStatus, _errorThrown) => {
+        error: (xmlHttpRequest, textStatus, errorThrown) => {
           if (xmlHttpRequest.status === 404) {
             clearInterval(progressInterval);
             progressCompleted();
@@ -939,11 +919,10 @@ $(function () {
       fetch(url, {
         method: "DELETE",
         headers: {
-          // biome-ignore lint/style/useNamingConvention: special case
           Accept: "application/json",
           "X-CSRFToken": $form.find("input").val(),
         },
-      }).then((_data) => {
+      }).then((data) => {
         window.location = $("#progress-return").attr("href");
       });
       e.preventDefault();
@@ -970,24 +949,21 @@ $(function () {
       }
     };
 
-    const taskInterval = setInterval(
-      () => {
-        $.get($message.data("task"), (data) => {
-          $bar.width(`${data.progress}%`);
-          if (data.completed) {
-            progressCompleted();
-            if (data.result.message) {
-              $message.text(data.result.message);
-            }
+    const taskInterval = setInterval(() => {
+      $.get($message.data("task"), (data) => {
+        $bar.width(`${data.progress}%`);
+        if (data.completed) {
+          progressCompleted();
+          if (data.result.message) {
+            $message.text(data.result.message);
           }
-        }).fail((jqXhr) => {
-          if (jqXhr.status === 404) {
-            progressCompleted();
-          }
-        });
-      },
-      1000 * Math.max(progressBars.length / 5, 1),
-    );
+        }
+      }).fail((jqXhr) => {
+        if (jqXhr.status === 404) {
+          progressCompleted();
+        }
+      });
+    }, 1000 * Math.max(progressBars.length / 5, 1));
   });
 
   /* Disable invalid file format choices */
@@ -1022,7 +998,7 @@ $(function () {
     const branches = $form.data("branches");
     const $select = $form.find("select[name=branch]");
     $select.empty();
-    $.each(branches[$this.val()], (_key, value) => {
+    $.each(branches[$this.val()], (key, value) => {
       $select.append($("<option></option>").attr("value", value).text(value));
     });
   });
@@ -1047,10 +1023,8 @@ $(function () {
   const clickedOutsideEditableInput = (event) => {
     // Check if clicked outside of the input and the editable input
     if (
-      // biome-ignore lint/complexity/useSimplifiedLogicExpression: TODO
       !$positionInputEditable.is(event.target) &&
-      // biome-ignore lint/style/useExplicitLengthCheck: Done?
-      !($positionInputEditable.has(event.target).length === 0) &&
+      !$positionInputEditable.has(event.target).length &&
       !$positionInput.is(event.target)
     ) {
       $positionInput.show();
@@ -1137,7 +1111,7 @@ $(function () {
         return false;
       }
     });
-  $("#id_q").on("input", function (_event) {
+  $("#id_q").on("input", function (event) {
     const $form = $(this).closest("form");
     $form.find("input[name=offset]").prop("disabled", true);
   });
@@ -1154,7 +1128,7 @@ $(function () {
         prefix = "=";
       }
       $("#id_q").insertAtCaret(
-        ` ${button.attr("data-field")}${prefix}${quoteSearch(input.val())} `,
+        ` ${button.attr("data-field")}${prefix}${quoteSearch(input.val())} `
       );
     }
   });
@@ -1177,7 +1151,7 @@ $(function () {
         target.val(name.substring(0, name.lastIndexOf(".")));
         target.change();
       }
-    },
+    }
   );
 
   /* Alert when creating a component */
@@ -1185,7 +1159,7 @@ $(function () {
     addAlert(
       gettext("Weblate is now scanning the repository, please be patient."),
       "info",
-      0,
+      0
     );
   });
 
@@ -1216,8 +1190,7 @@ $(function () {
           }));
           callback(userMentionList);
         },
-        error: (_jqXhr, _textStatus, errorThrown) => {
-          // biome-ignore lint/suspicious/noConsole: TODO
+        error: (jqXhr, textStatus, errorThrown) => {
           console.error(errorThrown);
         },
       });
@@ -1226,7 +1199,7 @@ $(function () {
   tribute.attach(document.querySelectorAll(".markdown-editor"));
   // biome-ignore lint/complexity/noForEach: TODO
   document.querySelectorAll(".markdown-editor").forEach((editor) => {
-    editor.addEventListener("tribute-active-true", (_e) => {
+    editor.addEventListener("tribute-active-true", (e) => {
       $(".tribute-container").addClass("open");
       $(".tribute-container ul").addClass("dropdown-menu");
     });
@@ -1286,7 +1259,7 @@ $(function () {
   document
     .querySelectorAll(".nav-pills > li > a > button.close")
     .forEach((button) => {
-      button.addEventListener("click", (_e) => {
+      button.addEventListener("click", (e) => {
         const link = button.parentElement;
         // biome-ignore lint/complexity/noForEach: TODO
         document
@@ -1298,9 +1271,9 @@ $(function () {
         $("a[href='#notifications__1']").tab("show");
         addAlert(
           gettext(
-            "Notification settings removed, please do not forget to save the changes.",
+            "Notification settings removed, please do not forget to save the changes."
           ),
-          "info",
+          "info"
         );
       });
     });
@@ -1339,7 +1312,6 @@ $(function () {
               return data.results.map((user) => {
                 return {
                   username: user.username,
-                  // biome-ignore lint/style/useNamingConvention: special case
                   full_name: `${user.full_name} (${user.username})`,
                 };
               });
@@ -1431,7 +1403,7 @@ $(function () {
   });
 
   /* Move current translation into the view */
-  $('a[data-toggle="tab"][href="#nearby"]').on("shown.bs.tab", (_e) => {
+  $('a[data-toggle="tab"][href="#nearby"]').on("shown.bs.tab", (e) => {
     document.querySelector("#nearby .current_translation").scrollIntoView({
       block: "nearest",
       inline: "nearest",
@@ -1441,7 +1413,7 @@ $(function () {
 
   // biome-ignore lint/complexity/noForEach: TODO
   document.querySelectorAll("[data-visibility]").forEach((toggle) => {
-    toggle.addEventListener("click", (_event) => {
+    toggle.addEventListener("click", (event) => {
       // biome-ignore lint/complexity/noForEach: TODO
       document
         .querySelectorAll(toggle.getAttribute("data-visibility"))
@@ -1451,71 +1423,76 @@ $(function () {
     });
   });
 
-  $("input[name='period']").daterangepicker({
-    autoApply: false,
-    autoUpdateInput: false,
-    startDate: $("input[name='period']#id_period").attr("data-start-date"),
-    endDate: $("input[name='period']#id_period").attr("data-end-date"),
-    alwaysShowCalendars: true,
-    cancelButtonClasses: "btn-warning",
-    opens: "left",
-    locale: {
-      customRangeLabel: gettext("Custom range"),
-      cancelLabel: gettext("Clear"),
-      daysOfWeek: [
-        pgettext("Short name of day", "Su"),
-        pgettext("Short name of day", "Mo"),
-        pgettext("Short name of day", "Tu"),
-        pgettext("Short name of day", "We"),
-        pgettext("Short name of day", "Th"),
-        pgettext("Short name of day", "Fr"),
-        pgettext("Short name of day", "Sa"),
-      ],
-      monthNames: [
-        pgettext("Short name of month", "Jan"),
-        pgettext("Short name of month", "Feb"),
-        pgettext("Short name of month", "Mar"),
-        pgettext("Short name of month", "Apr"),
-        pgettext("Short name of month", "May"),
-        pgettext("Short name of month", "Jun"),
-        pgettext("Short name of month", "Jul"),
-        pgettext("Short name of month", "Aug"),
-        pgettext("Short name of month", "Sep"),
-        pgettext("Short name of month", "Oct"),
-        pgettext("Short name of month", "Nov"),
-        pgettext("Short name of month", "Dec"),
-      ],
+  $("input[name='period']").daterangepicker(
+    {
+      autoApply: false,
+      autoUpdateInput: false,
+      startDate: $("input[name='period']#id_period").attr("data-start-date"),
+      endDate: $("input[name='period']#id_period").attr("data-end-date"),
+      alwaysShowCalendars: true,
+      cancelButtonClasses: "btn-warning",
+      opens: "left",
+      locale: {
+        customRangeLabel: gettext("Custom range"),
+        cancelLabel: gettext("Clear"),
+        daysOfWeek: [
+          pgettext("Short name of day", "Su"),
+          pgettext("Short name of day", "Mo"),
+          pgettext("Short name of day", "Tu"),
+          pgettext("Short name of day", "We"),
+          pgettext("Short name of day", "Th"),
+          pgettext("Short name of day", "Fr"),
+          pgettext("Short name of day", "Sa"),
+        ],
+        monthNames: [
+          pgettext("Short name of month", "Jan"),
+          pgettext("Short name of month", "Feb"),
+          pgettext("Short name of month", "Mar"),
+          pgettext("Short name of month", "Apr"),
+          pgettext("Short name of month", "May"),
+          pgettext("Short name of month", "Jun"),
+          pgettext("Short name of month", "Jul"),
+          pgettext("Short name of month", "Aug"),
+          pgettext("Short name of month", "Sep"),
+          pgettext("Short name of month", "Oct"),
+          pgettext("Short name of month", "Nov"),
+          pgettext("Short name of month", "Dec"),
+        ],
+      },
+      ranges: {
+        [gettext("Today")]: [moment(), moment()],
+        [gettext("Yesterday")]: [
+          moment().subtract(1, "days"),
+          moment().subtract(1, "days"),
+        ],
+        [gettext("Last 7 days")]: [moment().subtract(6, "days"), moment()],
+        [gettext("Last 30 days")]: [moment().subtract(29, "days"), moment()],
+        [gettext("This month")]: [
+          moment().startOf("month"),
+          moment().endOf("month"),
+        ],
+        [gettext("Last month")]: [
+          moment().subtract(1, "month").startOf("month"),
+          moment().subtract(1, "month").endOf("month"),
+        ],
+        [gettext("This year")]: [
+          moment().startOf("year"),
+          moment().endOf("year"),
+        ],
+        [gettext("Last year")]: [
+          moment().subtract(1, "year").startOf("year"),
+          moment().subtract(1, "year").endOf("year"),
+        ],
+      },
     },
-    ranges: {
-      [gettext("Today")]: [moment(), moment()],
-      [gettext("Yesterday")]: [
-        moment().subtract(1, "days"),
-        moment().subtract(1, "days"),
-      ],
-      [gettext("Last 7 days")]: [moment().subtract(6, "days"), moment()],
-      [gettext("Last 30 days")]: [moment().subtract(29, "days"), moment()],
-      [gettext("This month")]: [
-        moment().startOf("month"),
-        moment().endOf("month"),
-      ],
-      [gettext("Last month")]: [
-        moment().subtract(1, "month").startOf("month"),
-        moment().subtract(1, "month").endOf("month"),
-      ],
-      [gettext("This year")]: [
-        moment().startOf("year"),
-        moment().endOf("year"),
-      ],
-      [gettext("Last year")]: [
-        moment().subtract(1, "year").startOf("year"),
-        moment().subtract(1, "year").endOf("year"),
-      ],
-    },
-  });
+    (start, end, label) => {}
+  );
 
-  $("input[name='period']").on("apply.daterangepicker", function (_ev, picker) {
+  $("input[name='period']").on("apply.daterangepicker", function (ev, picker) {
     $(this).val(
-      `${picker.startDate.format("MM/DD/YYYY")} - ${picker.endDate.format("MM/DD/YYYY")}`,
+      `${picker.startDate.format("MM/DD/YYYY")} - ${picker.endDate.format(
+        "MM/DD/YYYY"
+      )}`
     );
   });
 
@@ -1530,8 +1507,8 @@ $(function () {
       el.dispatchEvent(new CustomEvent("input"));
     };
     const transferTextareaInputs = (fromId, toId) => {
-      $(`${toId} textarea`).each((_toIdx, toTextArea) => {
-        $(`${fromId} textarea`).each((_fromIdx, fromTextArea) => {
+      $(`${toId} textarea`).each((toIdx, toTextArea) => {
+        $(`${fromId} textarea`).each((fromIdx, fromTextArea) => {
           if (fromTextArea.name === toTextArea.name) {
             refreshInput(toTextArea, fromTextArea.value);
           }
@@ -1543,7 +1520,7 @@ $(function () {
       $("input[name='new-unit-form-type']").removeAttr("checked");
       $("#new-singular #show-singular").prop("checked", true);
       $("#new-singular input[name='context']").val(
-        $("#new-plural input[name='context']").val(),
+        $("#new-plural input[name='context']").val()
       );
       transferTextareaInputs("#new-plural", "#new-singular");
       $("#new-plural").addClass("hidden");
@@ -1552,7 +1529,7 @@ $(function () {
       $("input[name='new-unit-form-type']").removeAttr("checked");
       $("#new-plural #show-plural").prop("checked", true);
       $("#new-plural input[name='context']").val(
-        $("#new-singular input[name='context']").val(),
+        $("#new-singular input[name='context']").val()
       );
       transferTextareaInputs("#new-singular", "#new-plural");
       $("#new-singular").addClass("hidden");
@@ -1564,11 +1541,9 @@ $(function () {
   document.addEventListener("otp_webauthn.register_complete", (event) => {
     const id = event.detail.id;
     const deviceInput = document.querySelector(
-      "input[name=passkey-device-name]",
+      "input[name=passkey-device-name]"
     );
-    const _csrfToken = document.querySelector(
-      "input[name=csrfmiddlewaretoken]",
-    );
+    const csrfToken = document.querySelector("input[name=csrfmiddlewaretoken]");
 
     const action = deviceInput.getAttribute("data-href").replace("000000", id);
 
@@ -1584,24 +1559,21 @@ $(function () {
   });
 
   /* Warn users that they do not want to use developer console in most cases */
-  // biome-ignore lint/suspicious: It is intentional to log a warning
   console.log(
     "%c%s",
     "color: red; font-weight: bold; font-size: 50px; font-family: sans-serif; -webkit-text-stroke: 1px black;",
-    pgettext("Alert to user when opening browser developer console", "Stop!"),
+    pgettext("Alert to user when opening browser developer console", "Stop!")
   );
-  // biome-ignore lint/suspicious: It is intentional to log a warning
   console.log(
     "%c%s",
     "font-size: 20px; font-family: sans-serif",
     gettext(
-      "This is a browser feature intended for developers. If someone told you to copy-paste something here, they are likely trying to compromise your Weblate account.",
-    ),
+      "This is a browser feature intended for developers. If someone told you to copy-paste something here, they are likely trying to compromise your Weblate account."
+    )
   );
-  // biome-ignore lint/suspicious: It is intentional to log a warning
   console.log(
     "%c%s",
     "font-size: 20px; font-family: sans-serif",
-    gettext("See https://en.wikipedia.org/wiki/Self-XSS for more information."),
+    gettext("See https://en.wikipedia.org/wiki/Self-XSS for more information.")
   );
 });
