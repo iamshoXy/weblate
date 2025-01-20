@@ -1010,6 +1010,9 @@ $(function () {
     $form.find("input[name=offset]").prop("disabled", false);
     $("#position-input-editable").show();
     $("#position-input-editable-input").attr("type", "number").focus();
+
+    $("#position-input-editable").addClass("active");
+
     document.addEventListener("click", clickedOutsideEditableInput);
     document.addEventListener("keyup", pressedEscape);
   });
@@ -1021,11 +1024,14 @@ $(function () {
   const clickedOutsideEditableInput = (event) => {
     if (
       !$.contains($("#position-input-editable")[0], event.target) &&
-      event.target !== $("#position-input")[0]
+      event.target !== $("#position-input")[0] &&
+      $("#position-input-editable").hasClass("active")
     ) {
+      console.log("clickedOutsideEditableInput");
       $("#position-input").show();
       $("#position-input-editable-input").attr("type", "hidden");
-      $("#position-input-editable").hide();
+      $("#position-input-editable").removeClass("active").hide();
+
       document.removeEventListener("click", clickedOutsideEditableInput);
       document.removeEventListener("keyup", pressedEscape);
     }
@@ -1035,7 +1041,8 @@ $(function () {
     if (event.key === "Escape" && event.target !== $("#position-input")[0]) {
       $("#position-input").show();
       $("#position-input-editable-input").attr("type", "hidden");
-      $("#position-input-editable").hide();
+      $("#position-input-editable").removeClass("active").hide();
+
       document.removeEventListener("click", clickedOutsideEditableInput);
       document.removeEventListener("keyup", pressedEscape);
     }
