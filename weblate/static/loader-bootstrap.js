@@ -1005,6 +1005,7 @@ $(function () {
 
   /* Click to edit position inline. Disable when clicked outside or pressed ESC */
   $("#position-input").on("click", function () {
+    console.log("on click 1");
     const $form = $(this).closest("form");
     $("#position-input").hide();
     $form.find("input[name=offset]").prop("disabled", false);
@@ -1027,7 +1028,6 @@ $(function () {
       event.target !== $("#position-input")[0] &&
       $("#position-input-editable").hasClass("active")
     ) {
-      console.log("clickedOutsideEditableInput");
       $("#position-input").show();
       $("#position-input-editable-input").attr("type", "hidden");
       $("#position-input-editable").removeClass("active").hide();
@@ -1038,6 +1038,7 @@ $(function () {
   };
 
   const pressedEscape = (event) => {
+    console.log("pressedEscape");
     if (event.key === "Escape" && event.target !== $("#position-input")[0]) {
       $("#position-input").show();
       $("#position-input-editable-input").attr("type", "hidden");
