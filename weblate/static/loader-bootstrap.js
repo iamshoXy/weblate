@@ -1013,6 +1013,11 @@ $(function () {
     document.addEventListener("click", clickedOutsideEditableInput);
     document.addEventListener("keyup", pressedEscape);
   });
+
+  $("#position-input-editable-input").on("click", function (event) {
+    event.stopPropagation();
+  });
+
   const clickedOutsideEditableInput = (event) => {
     if (
       !$.contains($("#position-input-editable")[0], event.target) &&
@@ -1021,10 +1026,11 @@ $(function () {
       $("#position-input").show();
       $("#position-input-editable-input").attr("type", "hidden");
       $("#position-input-editable").hide();
-      document.emoveEventListener("click", clickedOutsideEditableInput);
+      document.removeEventListener("click", clickedOutsideEditableInput);
       document.removeEventListener("keyup", pressedEscape);
     }
   };
+
   const pressedEscape = (event) => {
     if (event.key === "Escape" && event.target !== $("#position-input")[0]) {
       $("#position-input").show();
