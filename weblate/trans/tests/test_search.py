@@ -15,6 +15,7 @@ from weblate.trans.tests.test_views import ViewTestCase
 from weblate.utils.db import TransactionsTestMixin
 from weblate.utils.ratelimit import reset_rate_limit
 from weblate.utils.state import STATE_FUZZY, STATE_READONLY, STATE_TRANSLATED
+from weblate.utils.views import get_form_data
 
 
 class SearchViewTest(TransactionsTestMixin, ViewTestCase):
@@ -218,14 +219,14 @@ class SearchViewTest(TransactionsTestMixin, ViewTestCase):
             "variant-glossary-term", [en_glossary, de_glossary], cs_glossary
         )
 
-    def test_search_variant_with_regex_key(self):
+    def test_search_variant_with_regex_key(self) -> None:
         mono_component = self.create_po_mono(project=self.project, name="Monolingual")
 
         # set variant_regex match
         url = reverse("settings", kwargs={"path": mono_component.get_url_path()})
         self.project.add_user(self.user, "Administration")
         response = self.client.get(url)
-        data = response.context["form"].initial
+        data = get_form_data(response.context["form"].initial)
         data["variant_regex"] = r"(_variant)$"
 
         response = self.client.post(

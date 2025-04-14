@@ -10,7 +10,6 @@ from io import BytesIO
 import responses
 from django.core.files import File
 from django.urls import reverse
-from rest_framework.exceptions import ErrorDetail
 from rest_framework.test import APITestCase
 from weblate_language_data.languages import LANGUAGES
 
@@ -108,7 +107,9 @@ class APIBaseTest(APITestCase, RepoTestMixin):
         if authenticated:
             self.authenticate(superuser)
         url = name if name.startswith(("http:", "/")) else reverse(name, kwargs=kwargs)
-        response = getattr(self.client, method)(url, request, format, headers=headers)
+        response = getattr(self.client, method)(
+            url, request, format=format, headers=headers
+        )
         content = response.content if hasattr(response, "content") else "<stream>"
 
         self.assertEqual(
@@ -119,6 +120,7 @@ class APIBaseTest(APITestCase, RepoTestMixin):
         if data is not None:
             for item in skip:
                 del response.data[item]
+            self.maxDiff = None
             self.assertEqual(response.data, data)
         return response
 
@@ -478,6 +480,44 @@ class GroupAPITest(APIBaseTest):
             code=200,
             request={"role_id": role.id},
         )
+
+    def test_remove_role(self) -> None:
+        role = Role.objects.get(name="Administration")
+        group = Group.objects.get(name="Users")
+
+        self.do_request(
+            "api:group-roles",
+            kwargs={"id": group.id},
+            method="post",
+            superuser=True,
+            code=200,
+            request={"role_id": role.id},
+        )
+
+        self.do_request(
+            "api:group-delete-roles",
+            kwargs={"id": group.id, "role_id": role.id},
+            method="delete",
+            code=403,
+        )
+
+        self.do_request(
+            "api:group-delete-roles",
+            kwargs={"id": group.id, "role_id": 99999},
+            method="delete",
+            superuser=True,
+            code=404,
+        )
+
+        self.do_request(
+            "api:group-delete-roles",
+            kwargs={"id": group.id, "role_id": role.id},
+            method="delete",
+            superuser=True,
+            code=204,
+        )
+
+        self.assertEqual(group.roles.filter(pk=role.id).count(), 0)
 
     def test_add_component(self) -> None:
         self.do_request(
@@ -1057,6 +1097,18 @@ class ProjectAPITest(APIBaseTest):
     def test_languages(self) -> None:
         request = self.do_request("api:project-languages", self.project_kwargs)
         self.assertEqual(len(request.data), 4)
+        response = self.do_request(
+            "api:project-languages",
+            self.project_kwargs,
+            request={
+                "format": "json-flat",
+            },
+        )
+        data = response.json()
+        self.assertIsInstance(data, list)
+        self.assertEqual(len(data), 4)
+        for item in data:
+            self.assertIsInstance(item, dict)
 
     def test_delete(self) -> None:
         self.do_request(
@@ -1165,8 +1217,17 @@ class ProjectAPITest(APIBaseTest):
             Component.objects.get(slug="api-project").source_language.code, "ru"
         )
         self.assertEqual(
-            error_response.data["source_language"]["code"][0],
-            "Language with this language code was not found.",
+            error_response.data,
+            {
+                "type": "validation_error",
+                "errors": [
+                    {
+                        "code": "invalid",
+                        "detail": "Language with this language code was not found.",
+                        "attr": "source_language.code",
+                    }
+                ],
+            },
         )
 
     def test_create_with_source_language_string(self, format="json") -> None:  # noqa: A002
@@ -1400,7 +1461,20 @@ class ProjectAPITest(APIBaseTest):
                 "new_lang": "none",
             },
         )
-        self.assertIn("file_format", response.data)
+        self.maxDiff = None
+        self.assertEqual(
+            {
+                "errors": [
+                    {
+                        "attr": "file_format",
+                        "code": "required",
+                        "detail": "This field is required.",
+                    }
+                ],
+                "type": "validation_error",
+            },
+            response.data,
+        )
 
     def test_create_component_link(self) -> None:
         repo_url = self.format_local_path(self.git_repo_path)
@@ -1507,7 +1581,20 @@ class ProjectAPITest(APIBaseTest):
             },
         )
         self.assertEqual(Component.objects.count(), 2)
-        self.assertIn("filemask", response.data)
+        self.maxDiff = None
+        self.assertEqual(
+            {
+                "errors": [
+                    {
+                        "attr": "filemask",
+                        "code": "invalid",
+                        "detail": "The file mask did not match any files.",
+                    }
+                ],
+                "type": "validation_error",
+            },
+            response.data,
+        )
 
     def test_create_component_local(self) -> None:
         response = self.do_request(
@@ -2331,6 +2418,18 @@ class ComponentAPITest(APIBaseTest):
             data={"count": 4},
             skip=("results", "previous", "next"),
         )
+        response = self.do_request(
+            "api:component-statistics",
+            self.component_kwargs,
+            request={
+                "format": "json-flat",
+            },
+        )
+        data = response.json()
+        self.assertIsInstance(data, list)
+        self.assertEqual(len(data), 4)
+        for item in data:
+            self.assertIsInstance(item, dict)
 
     def test_new_template_404(self) -> None:
         self.do_request("api:component-new-template", self.component_kwargs, code=404)
@@ -2565,7 +2664,12 @@ class ComponentAPITest(APIBaseTest):
             self.component_kwargs,
             method="get",
             code=200,
-            request={"start": start.isoformat(), "end": end.isoformat()},
+            request={
+                "start": start.isoformat(),
+                "end": end.isoformat(),
+                "sort_by": "count",
+                "sort_order": "ascending",
+            },
         )
         self.assertEqual(response.data, [])
 
@@ -2574,7 +2678,13 @@ class ComponentAPITest(APIBaseTest):
             self.component_kwargs,
             method="get",
             code=200,
-            request={"start": start.isoformat(), "end": end.isoformat(), "lang": "fr"},
+            request={
+                "start": start.isoformat(),
+                "end": end.isoformat(),
+                "lang": "fr",
+                "sort_by": "count",
+                "sort_order": "ascending",
+            },
         )
         self.assertEqual(response.data, [])
 
@@ -2943,15 +3053,28 @@ class TranslationAPITest(APIBaseTest):
 
     def test_upload_source(self) -> None:
         self.authenticate(True)
+
+        # Upload to translation
         with open(TEST_POT, "rb") as handle:
             response = self.client.put(
                 reverse("api:translation-file", kwargs=self.translation_kwargs),
                 {"file": handle, "method": "source"},
             )
         self.assertEqual(response.status_code, 400)
+
+        source_kwargs = copy(self.translation_kwargs)
+        source_kwargs["language__code"] = "en"
+
+        # Upload to source without a method
         with open(TEST_POT, "rb") as handle:
-            source_kwargs = copy(self.translation_kwargs)
-            source_kwargs["language__code"] = "en"
+            response = self.client.put(
+                reverse("api:translation-file", kwargs=source_kwargs),
+                {"file": handle, "method": "translate"},
+            )
+        self.assertEqual(response.status_code, 400)
+
+        # Correct upload
+        with open(TEST_POT, "rb") as handle:
             response = self.client.put(
                 reverse("api:translation-file", kwargs=source_kwargs),
                 {"file": handle, "method": "source"},
@@ -3094,9 +3217,14 @@ class TranslationAPITest(APIBaseTest):
         self.assertEqual(
             response.data,
             {
-                "file": ErrorDetail(
-                    string="Plural forms do not match the language.", code="invalid"
-                )
+                "errors": [
+                    {
+                        "attr": "file",
+                        "code": "invalid",
+                        "detail": "Plural forms do not match the language.",
+                    }
+                ],
+                "type": "validation_error",
             },
         )
 
@@ -3284,6 +3412,21 @@ class TranslationAPITest(APIBaseTest):
             format="json",
             request={"key": "plural", "value": ["Source Language", "Source Languages"]},
             code=200,
+        )
+        self.assertEqual(component.source_translation.unit_set.count(), 6)
+        # Duplicate
+        self.do_request(
+            "api:translation-units",
+            {
+                "language__code": "en",
+                "component__slug": "test",
+                "component__project__slug": "acl",
+            },
+            method="post",
+            superuser=True,
+            format="json",
+            request={"key": "plural", "value": ["Source Language", "Source Languages"]},
+            code=400,
         )
         self.assertEqual(component.source_translation.unit_set.count(), 6)
         self.do_request(
@@ -3603,6 +3746,7 @@ class UnitAPITest(APIBaseTest):
         )
         response = self.client.get(reverse("api:unit-detail", kwargs={"pk": unit.pk}))
         self.assertIn("translation", response.data)
+        self.assertIn("language_code", response.data)
         self.assertEqual(response.data["source"], ["Hello, world!\n"])
 
     def test_get_plural_unit(self) -> None:
@@ -3611,6 +3755,7 @@ class UnitAPITest(APIBaseTest):
         )
         response = self.client.get(reverse("api:unit-detail", kwargs={"pk": unit.pk}))
         self.assertIn("translation", response.data)
+        self.assertIn("language_code", response.data)
         self.assertEqual(
             response.data["source"],
             ["Orangutan has %d banana.\n", "Orangutan has %d bananas.\n"],
@@ -3658,14 +3803,14 @@ class UnitAPITest(APIBaseTest):
             kwargs={"pk": unit.pk},
             method="patch",
             code=400,
-            request={"state": "100", "target": "Test read only translation"},
+            request={"state": "100", "target": "Test read-only translation"},
         )
         self.do_request(
             "api:unit-detail",
             kwargs={"pk": unit.pk},
             method="patch",
             code=400,
-            request={"state": "0", "target": "Test read only translation"},
+            request={"state": "0", "target": "Test read-only translation"},
         )
         self.do_request(
             "api:unit-detail",
@@ -3881,6 +4026,14 @@ class UnitAPITest(APIBaseTest):
             method="patch",
             code=400,
             superuser=True,
+            request={"labels": ["name"]},
+        )
+        self.do_request(
+            "api:unit-detail",
+            kwargs={"pk": unit.source_unit.pk},
+            method="patch",
+            code=400,
+            superuser=True,
             request={"labels": [label2.id]},
         )
 
@@ -3969,6 +4122,25 @@ class UnitAPITest(APIBaseTest):
         self.assertNotEqual(revision, component.repository.last_revision)
         self.assertEqual(component.stats.all, 12)
 
+    def test_unit_translations(self):
+        unit = Unit.objects.get(
+            translation__language_code="en", source="Thank you for using Weblate."
+        )
+        response = self.client.get(
+            reverse("api:unit-translations", kwargs={"pk": unit.pk})
+        )
+        # translations units do not include source unit
+        self.assertEqual(len(response.data), 3)
+
+        unit_cs = Unit.objects.get(
+            translation__language_code="cs", source="Thank you for using Weblate."
+        )
+        response = self.client.get(
+            reverse("api:unit-translations", kwargs={"pk": unit_cs.pk})
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.data["errors"][0]["code"], "not-a-source-unit")
+
 
 class ScreenshotAPITest(APIBaseTest):
     def setUp(self) -> None:
@@ -4040,9 +4212,14 @@ class ScreenshotAPITest(APIBaseTest):
                 code=400,
                 superuser=True,
                 data={
-                    "language_code": ErrorDetail(
-                        string="This field is required.", code="invalid"
-                    )
+                    "errors": [
+                        {
+                            "attr": "language_code",
+                            "code": "invalid",
+                            "detail": "This field is required.",
+                        }
+                    ],
+                    "type": "validation_error",
                 },
                 request={
                     "project_slug": "test",
@@ -4057,18 +4234,24 @@ class ScreenshotAPITest(APIBaseTest):
                 code=400,
                 superuser=True,
                 data={
-                    "project_slug": ErrorDetail(
-                        string="Translation matching query does not exist.",
-                        code="invalid",
-                    ),
-                    "component_slug": ErrorDetail(
-                        string="Translation matching query does not exist.",
-                        code="invalid",
-                    ),
-                    "language_code": ErrorDetail(
-                        string="Translation matching query does not exist.",
-                        code="invalid",
-                    ),
+                    "errors": [
+                        {
+                            "attr": "project_slug",
+                            "code": "invalid",
+                            "detail": "Translation matching query does not exist.",
+                        },
+                        {
+                            "attr": "component_slug",
+                            "code": "invalid",
+                            "detail": "Translation matching query does not exist.",
+                        },
+                        {
+                            "attr": "language_code",
+                            "code": "invalid",
+                            "detail": "Translation matching query does not exist.",
+                        },
+                    ],
+                    "type": "validation_error",
                 },
                 request={
                     "name": "Test create screenshot",
@@ -4083,12 +4266,19 @@ class ScreenshotAPITest(APIBaseTest):
             method="post",
             code=400,
             data={
-                "name": [
-                    ErrorDetail(string="This field is required.", code="required")
+                "errors": [
+                    {
+                        "attr": "name",
+                        "code": "required",
+                        "detail": "This field is required.",
+                    },
+                    {
+                        "attr": "image",
+                        "code": "required",
+                        "detail": "No file was submitted.",
+                    },
                 ],
-                "image": [
-                    ErrorDetail(string="No file was submitted.", code="required")
-                ],
+                "type": "validation_error",
             },
             superuser=True,
             request={
@@ -4264,9 +4454,27 @@ class MetricsAPITest(APIBaseTest):
         response = self.client.get(reverse("api:metrics"), {"format": "openmetrics"})
         self.assertContains(response, "# EOF")
 
+    def test_metrics_csv(self) -> None:
+        self.authenticate()
+        response = self.client.get(reverse("api:metrics"), {"format": "csv"})
+        self.assertContains(response, "units_translated")
+
     def test_forbidden(self) -> None:
         response = self.client.get(reverse("api:metrics"))
-        self.assertEqual(response.data["detail"].code, "not_authenticated")
+        self.maxDiff = None
+        self.assertEqual(
+            response.data,
+            {
+                "type": "client_error",
+                "errors": [
+                    {
+                        "attr": None,
+                        "code": "not_authenticated",
+                        "detail": "Authentication credentials were not provided.",
+                    }
+                ],
+            },
+        )
 
     def test_ratelimit(self) -> None:
         self.authenticate()

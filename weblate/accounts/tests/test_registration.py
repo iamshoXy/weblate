@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import os
 from typing import TYPE_CHECKING
 from urllib.parse import parse_qs, urlparse
 
@@ -161,12 +162,12 @@ class RegistrationTest(BaseRegistrationTest):
         self.assertContains(response, "That was not correct, please try again.")
         self.assertContains(response, "Validation failed, please try again.")
 
-    def solve_altcha(self, response, data: dict):
+    def solve_altcha(self, response, data: dict) -> None:
         form = response.context["form"]
         challenge: Challenge = form.challenge
         data["altcha"] = solve_altcha(challenge)
 
-    def solve_math(self, response, data: dict):
+    def solve_math(self, response, data: dict) -> None:
         form = response.context["form"]
         data["captcha"] = form.mathcaptcha.result
 
@@ -737,6 +738,12 @@ class RegistrationTest(BaseRegistrationTest):
         },
     )
     def test_saml(self) -> None:
+        try:
+            import xmlsec  # noqa: F401
+        except Exception as error:
+            if "CI_SKIP_SAML" in os.environ:
+                self.skipTest(f"xmlsec error: {error}")
+            raise
         url = reverse("social:saml-metadata")
         response = self.client.get(url)
         self.assertContains(response, url)

@@ -205,9 +205,10 @@ class MemoryModelTest(TransactionsTestMixin, FixtureTestCase):
         """Test the import of an GNU PO file."""
         self.import_file_with_languages_test("cs.po", "en", "cs", 1)
 
-    def test_import_tbx(self) -> None:
-        """Test the import of a TBX file."""
-        self.import_file_with_languages_test("cs.tbx", "en", "cs", 4)
+    def test_import_unsupported_format(self) -> None:
+        """Test the import of an unsupported file."""
+        with self.assertRaises(CommandError):
+            self.import_file_with_languages_test("cs.ts", "en", "cs", 0)
 
     def test_import_project(self) -> None:
         import_memory(self.project.id)
@@ -414,48 +415,82 @@ class MemoryViewTest(FixtureTestCase):
         )
         validate(response.json(), load_schema("weblate-memory.schema.json"))
 
+    def test_upload_unsupported_file(self) -> None:
+        response = self.upload_file("cs.ts")
+        self.assertContains(
+            response, "Error in parameter file: File extension “ts” is not allowed."
+        )
+        self.assertContains(
+            response, "Allowed extensions are: json, tmx, xliff, po, csv."
+        )
+
 
 class ThresholdTestCase(SimpleTestCase):
     def test_search(self) -> None:
         self.assertAlmostEqual(
-            Memory.objects.threshold_to_similarity("x", 10), 0.66, delta=0.006
+            Memory.objects.threshold_to_similarity("x", 10), 0.7, delta=0.01
         )
         self.assertAlmostEqual(
-            Memory.objects.threshold_to_similarity("x" * 50, 10), 0.71, delta=0.006
+            Memory.objects.threshold_to_similarity("x" * 50, 10), 0.73, delta=0.01
         )
         self.assertAlmostEqual(
-            Memory.objects.threshold_to_similarity("x" * 500, 10), 0.74, delta=0.006
+            Memory.objects.threshold_to_similarity("x" * 500, 10), 0.76, delta=0.01
+        )
+        self.assertAlmostEqual(
+            Memory.objects.threshold_to_similarity("<" * 50 + "x" * 50 + ">" * 50, 10),
+            0.73,
+            delta=0.01,
+        )
+        self.assertAlmostEqual(
+            Memory.objects.threshold_to_similarity("🩸", 10),
+            0.7,
+            delta=0.01,
         )
 
     def test_auto(self) -> None:
         self.assertAlmostEqual(
-            Memory.objects.threshold_to_similarity("x", 80), 0.97, delta=0.006
+            Memory.objects.threshold_to_similarity("x", 80), 0.96, delta=0.01
         )
         self.assertAlmostEqual(
-            Memory.objects.threshold_to_similarity("x" * 50, 80), 0.98, delta=0.006
+            Memory.objects.threshold_to_similarity("x" * 50, 80), 0.96, delta=0.01
         )
         self.assertAlmostEqual(
-            Memory.objects.threshold_to_similarity("x" * 500, 80), 0.98, delta=0.006
+            Memory.objects.threshold_to_similarity("x" * 500, 80), 0.98, delta=0.01
+        )
+        self.assertAlmostEqual(
+            Memory.objects.threshold_to_similarity("<" * 50 + "x" * 50 + ">" * 50, 80),
+            0.96,
+            delta=0.01,
         )
 
     def test_machine(self) -> None:
         self.assertAlmostEqual(
-            Memory.objects.threshold_to_similarity("x", 75), 0.96, delta=0.006
+            Memory.objects.threshold_to_similarity("x", 75), 0.95, delta=0.01
         )
         self.assertAlmostEqual(
-            Memory.objects.threshold_to_similarity("x" * 50, 75), 0.97, delta=0.006
+            Memory.objects.threshold_to_similarity("x" * 50, 75), 0.96, delta=0.01
         )
         self.assertAlmostEqual(
-            Memory.objects.threshold_to_similarity("x" * 500, 75), 0.97, delta=0.006
+            Memory.objects.threshold_to_similarity("x" * 500, 75), 0.97, delta=0.01
+        )
+        self.assertAlmostEqual(
+            Memory.objects.threshold_to_similarity("<" * 50 + "x" * 50 + ">" * 50, 75),
+            0.96,
+            delta=0.01,
         )
 
     def test_machine_exact(self) -> None:
         self.assertAlmostEqual(
-            Memory.objects.threshold_to_similarity("x", 100), 1.0, delta=0.006
+            Memory.objects.threshold_to_similarity("x", 100), 1.0, delta=0.01
         )
         self.assertAlmostEqual(
-            Memory.objects.threshold_to_similarity("x" * 50, 100), 1.0, delta=0.006
+            Memory.objects.threshold_to_similarity("x" * 50, 100), 1.0, delta=0.01
         )
         self.assertAlmostEqual(
-            Memory.objects.threshold_to_similarity("x" * 500, 100), 1.0, delta=0.006
+            Memory.objects.threshold_to_similarity("x" * 500, 100), 1.0, delta=0.01
+        )
+        self.assertAlmostEqual(
+            Memory.objects.threshold_to_similarity("<" * 50 + "x" * 50 + ">" * 50, 100),
+            1.0,
+            delta=0.01,
         )

@@ -6,6 +6,9 @@
 
 :root {
   color-scheme: only light;
+  --altcha-color-text: #2a3744;
+  --altcha-border-radius: var(--border-radius-sm);
+  --altcha-color-border: #cccccc;
 }
 
 .avatar {
@@ -225,6 +228,8 @@ ul.legend li {
 .translator .form-group,
 .zen-unit .form-group {
   margin-bottom: 5px;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .translator .list-group {
@@ -639,6 +644,16 @@ form + .login-label {
   right: 15px;
   transform: translateY(-100%);
   z-index: 10;
+}
+
+#nearby,
+#keys,
+#others,
+#translations,
+#history,
+#machinery,
+#comments {
+  overflow-x: auto;
 }
 
 @media only screen and (max-width: 600px) {
@@ -1120,9 +1135,17 @@ th.number {
 thead th {
   font-weight: normal;
 }
+.table > thead > tr > th,
+.table > tbody > tr > th,
+.table > tfoot > tr > th,
+.table > thead > tr > td,
+.table > tbody > tr > td,
+.table > tfoot > tr > td {
+  border-top: var(--border);
+}
 
 .table > thead > tr > th {
-  border-bottom: 1px solid #bfc3c7;
+  border-bottom: none;
 }
 
 .table-listing,
@@ -1837,7 +1860,7 @@ a.language:hover {
   padding: 20px 0;
   margin: 0;
   border: 2px solid #e9eaec;
-  border-radius: 15px;
+  border-radius: calc(var(--border-radius) - 2px);
 }
 .metric-number {
   font-size: 40px;
@@ -2113,4 +2136,135 @@ tbody.warning {
 
 .daterangepicker {
   border: var(--border) !important;
+}
+
+#appearance-settings input[type="color"] {
+  width: 50%;
+}
+
+/* START: Shortcuts table styles */
+#shortcuts-table-container {
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+#shortcuts-table-container #t-head {
+  font-weight: bold;
+}
+
+#shortcuts-table-container kbd {
+  color: unset;
+}
+/* END: Shortcuts table styles */
+
+/** START: Search Previewe styles */
+#search-preview {
+  display: none;
+  width: 100%;
+  min-height: 40px;
+  max-height: 200px;
+  margin-top: -10px;
+  background: white;
+  padding: 5px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  border-top: none;
+  overflow-y: auto;
+  box-shadow: 1px 2px 4px #00000020;
+}
+
+#search-preview > #search-result {
+  display: block;
+  padding: 5px;
+  margin-bottom: 5px;
+  text-decoration: none;
+  color: inherit;
+  border-radius: 4px;
+}
+
+#search-preview > #search-result:hover {
+  background-color: #cccccc50;
+}
+
+#search-preview > #search-result > div {
+  margin-left: 10px;
+}
+
+#results-num {
+  font-size: 16px;
+  font-weight: bold;
+  color: #1fa385;
+  margin: 10px;
+}
+/** END: Search Previewe styles */
+
+/** START: Zen Editor sticky bottom styles */
+.sticky-bottom {
+  position: sticky;
+  bottom: 0;
+  background-color: var(--background-color);
+  z-index: 1000;
+}
+
+.hide-sticky {
+  display: none;
+  position: absolute;
+  top: -30%;
+  right: 0;
+}
+
+.sticky-bottom .hide-sticky {
+  display: block !important;
+}
+/** END: Zen Editor sticky bottom styles */
+
+.panel {
+  border-radius: var(--border-radius);
+  border: var(--border);
+}
+
+.panel-default > .panel-heading {
+  border: var(--border);
+}
+.panel-heading {
+  border-top-left-radius: var(--border-radius);
+  border-top-right-radius: var(--border-radius);
+}
+
+.panel:last-child,
+.panel-footer {
+  border-bottom-right-radius: var(--border-radius);
+  border-bottom-left-radius: var(--border-radius);
+}
+
+.panel-footer {
+  border-top: var(--border);
+}
+
+/* Zammad form integration */
+.zammad-form-modal-body {
+  max-width: 40em !important;
+}
+
+.altcha {
+  max-width: none !important;
+}
+
+.panel-title .pull-right.text-muted {
+  padding: 0 0.5em;
+}
+
+table.table-simple tbody#glossary-terms {
+  table-layout: fixed;
+  width: 100%;
+}
+
+table.table-simple tbody#glossary-terms td {
+  word-break: break-word;
+  white-space: normal;
+}
+
+/* Editor styles when it has changes */
+.has-changes {
+  border: 2px solid #8a6d3b !important;
 }

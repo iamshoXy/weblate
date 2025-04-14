@@ -17,8 +17,10 @@ from django.dispatch import receiver
 from django.urls import reverse
 from django.utils.functional import cached_property
 
+from weblate.trans.actions import ActionEvents
 from weblate.trans.models import Alert, Change, Component, Project, Translation, Unit
 from weblate.trans.signals import (
+    change_bulk_create,
     component_post_update,
     store_post_load,
     translation_post_add,
@@ -92,6 +94,10 @@ class Addon(models.Model):
     def __str__(self) -> str:
         return f"{self.addon.verbose}: {self.project or self.component or 'site-wide'}"
 
+    def __init__(self, *args, acting_user: User | None = None, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.acting_user = acting_user
+
     def save(
         self, force_insert=False, force_update=False, using=None, update_fields=None
     ):
@@ -119,9 +125,9 @@ class Addon(models.Model):
         # Store history (if not updating state only)
         if update_fields != ["state"]:
             self.store_change(
-                Change.ACTION_ADDON_CREATE
+                ActionEvents.ADDON_CREATE
                 if not self.pk or force_insert
-                else Change.ACTION_ADDON_CHANGE
+                else ActionEvents.ADDON_CHANGE
             )
 
         return super().save(
@@ -133,10 +139,6 @@ class Addon(models.Model):
 
     def get_absolute_url(self) -> str:
         return reverse("addon-detail", kwargs={"pk": self.pk})
-
-    def __init__(self, *args, acting_user: User | None = None, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
-        self.acting_user = acting_user
 
     def store_change(self, action) -> None:
         Change.objects.create(
@@ -163,7 +165,7 @@ class Addon(models.Model):
 
     def delete(self, using=None, keep_parents=False):
         # Store history
-        self.store_change(Change.ACTION_ADDON_REMOVE)
+        self.store_change(ActionEvents.ADDON_REMOVE)
         # Delete any addon alerts
         if self.addon.alert:
             if self.component:
@@ -253,6 +255,7 @@ class AddonsConf(AppConf):
         "weblate.addons.resx.ResxUpdateAddon",
         "weblate.addons.yaml.YAMLCustomizeAddon",
         "weblate.addons.cdn.CDNJSAddon",
+        "weblate.addons.webhooks.WebhookAddon",
     )
 
     LOCALIZE_CDN_URL = None
@@ -265,6 +268,23 @@ class AddonsConf(AppConf):
         prefix = ""
 
 
+# Events to exclude from logging
+NO_LOG_EVENTS = {
+    AddonEvent.EVENT_UNIT_PRE_CREATE,
+    AddonEvent.EVENT_UNIT_POST_SAVE,
+    AddonEvent.EVENT_STORE_POST_LOAD,
+}
+
+# Repository scoped events
+REPO_EVENTS = {
+    AddonEvent.EVENT_PRE_UPDATE,
+    AddonEvent.EVENT_POST_UPDATE,
+    AddonEvent.EVENT_PRE_PUSH,
+    AddonEvent.EVENT_POST_PUSH,
+    AddonEvent.EVENT_COMPONENT_UPDATE,
+}
+
+
 def execute_addon_event(
     addon: Addon,
     component: Component,
@@ -274,19 +294,12 @@ def execute_addon_event(
     args: tuple | None = None,
 ) -> None:
     # Trigger repository scoped add-ons only on the main component
-    if addon.repo_scope and component.linked_component:
+    if addon.repo_scope and component.linked_component and event in REPO_EVENTS:
         return
 
     # Log logging result and error flag for add-on activity log
     log_result = None
     error_occurred = False
-
-    # Events to exclude from logging
-    exclude_from_logging = {
-        AddonEvent.EVENT_UNIT_PRE_CREATE,
-        AddonEvent.EVENT_UNIT_POST_SAVE,
-        AddonEvent.EVENT_STORE_POST_LOAD,
-    }
 
     with transaction.atomic():
         scope.log_debug("running %s add-on: %s", event.label, addon.name)
@@ -323,7 +336,7 @@ def execute_addon_event(
             scope.log_debug("completed %s add-on: %s", event.label, addon.name)
         finally:
             # Check if add-on is still installed and log activity
-            if event not in exclude_from_logging and addon.pk is not None:
+            if event not in NO_LOG_EVENTS and addon.pk is not None:
                 AddonActivityLog.objects.create(
                     addon=addon,
                     component=component,
@@ -371,6 +384,7 @@ def handle_addon_event(
 ) -> None: ...
 
 
+@transaction.atomic
 def handle_addon_event(
     event,
     method,
@@ -532,6 +546,23 @@ def store_post_load_handler(sender, translation: Translation, store, **kwargs) -
         (translation, store),
         translation=translation,
     )
+
+
+@receiver(post_save, sender=Change)
+def change_post_save_handler(sender, instance: Change, created, **kwargs) -> None:
+    """Handle Change post save signal."""
+    from weblate.addons.tasks import addon_change
+
+    if created:  # ignore Change updates, they should not be updated anyway
+        addon_change.delay_on_commit([instance.pk])
+
+
+@receiver(change_bulk_create)
+def bulk_change_create_handler(sender, instances: list[Change], **kwargs) -> None:
+    """Handle Change bulk create signal."""
+    from weblate.addons.tasks import addon_change
+
+    addon_change.delay_on_commit([change.pk for change in instances])
 
 
 class AddonActivityLog(models.Model):

@@ -11,7 +11,7 @@ The API is accessible on the ``/api/`` URL and it is based on
 `Django REST framework <https://www.django-rest-framework.org/>`_.
 You can use it directly or by :ref:`wlc`.
 
-The API is also documented using OpenAPI 3.0 on the ``/api/schema/`` URL, you
+The API is also documented using OpenAPI 3.1 on the ``/api/schema/`` URL, you
 can browse at ``/api/docs/``.
 
 .. note::
@@ -37,7 +37,7 @@ token, which you can get in your profile. Use it in the ``Authorization`` header
 
     :query format: Response format (overrides :http:header:`Accept`).
                    Possible values depends on REST framework setup,
-                   by default ``json`` and ``api`` are supported. The
+                   by default ``json``, ``csv`` and ``api`` are supported. The
                    latter provides web browser interface for API.
     :query page: Returns given page of paginated results (use `next` and `previous` fields in response to automate the navigation).
     :query page_size: Return the given number of items per request.
@@ -66,6 +66,8 @@ token, which you can get in your profile. Use it in the ``Authorization`` header
     :status 403: when access is denied
     :status 429: when throttling is in place
 
+.. _api-tokens:
+
 Authentication tokens
 ~~~~~~~~~~~~~~~~~~~~~
 
@@ -78,6 +80,12 @@ profile. Newly generated user tokens have the ``wlu_`` prefix.
 
 It is possible to create project scoped tokens for API access to given project
 only. These tokens can be identified by the ``wlp_`` prefix.
+
+.. seealso::
+
+   :doc:`/user/profile`,
+   :ref:`project-api`,
+   :ref:`acl`
 
 Authentication examples
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -217,6 +225,17 @@ The status of rate limiting is reported in following headers:
    :ref:`user-rate`,
    :envvar:`WEBLATE_API_RATELIMIT_ANON`,
    :envvar:`WEBLATE_API_RATELIMIT_USER`
+
+.. _api-errors:
+
+Error responses
+~~~~~~~~~~~~~~~
+
+.. versionchanged:: 5.10
+
+   Error responses were endpoint specific before this release.
+
+Weblate error responses are formatted based on :doc:`drf-standardized-error:error_response`.
 
 
 API Entry Point
@@ -480,7 +499,7 @@ Groups
 
 .. http:get:: /api/groups/(int:id)/
 
-    Returns information about group.
+    Returns information about the group.
 
     :param id: Group's ID
     :type id: int
@@ -529,7 +548,7 @@ Groups
     :type id: int
     :>json string name: name of a group
     :>json int project_selection: integer corresponding to group of projects
-    :>json int language_selection: integer corresponding to group of Languages
+    :>json int language_selection: integer corresponding to group of languages
 
 .. http:patch:: /api/groups/(int:id)/
 
@@ -555,6 +574,15 @@ Groups
     :param id: Group's ID
     :type id: int
     :form string role_id: The unique role ID
+
+.. http:delete:: /api/groups/(int:id)/roles/(int:role_id)
+
+    Delete role from a group.
+
+    :param id: Group's ID
+    :type id: int
+    :param role_id: The unique role ID
+    :type role_id: int
 
 .. http:post:: /api/groups/(int:id)/components/
 
@@ -670,9 +698,9 @@ Roles
 
 .. http:get:: /api/roles/(int:id)/
 
-    Returns information about a role.
+    Returns information about the role.
 
-    :param id: Role ID
+    :param id: Role's ID
     :type id: int
     :>json string name: Role name
     :>json array permissions: list of codenames of permissions
@@ -744,7 +772,7 @@ Languages
 
 .. http:get:: /api/languages/(string:language)/
 
-    Returns information about a language.
+    Returns information about the language.
 
     :param language: Language code
     :type language: string
@@ -847,7 +875,7 @@ Projects
 
 .. http:get:: /api/projects/(string:project)/
 
-    Returns information about a project.
+    Returns information about the project.
 
     :param project: Project URL slug
     :type project: string
@@ -927,7 +955,7 @@ Projects
 
 .. http:get:: /api/projects/(string:project)/repository/
 
-    Returns information about VCS repository status. This endpoint contains
+    Returns information about the VCS repository status. This endpoint contains
     only an overall summary for all repositories for the project. To get more detailed
     status use :http:get:`/api/components/(string:project)/(string:component)/repository/`.
 
@@ -1279,7 +1307,7 @@ Components
 
 .. http:get:: /api/components/(string:project)/(string:component)/
 
-    Returns information about translation component.
+    Returns information about the translation component.
 
     :param project: Project URL slug
     :type project: string
@@ -1599,7 +1627,7 @@ Components
 
 .. http:get:: /api/components/(string:project)/(string:component)/repository/
 
-    Returns information about VCS repository status.
+    Returns information about the VCS repository status.
 
     The response is same as for :http:get:`/api/projects/(string:project)/repository/`.
 
@@ -1854,7 +1882,7 @@ Translations
 
 .. http:get:: /api/translations/(string:project)/(string:component)/(string:language)/
 
-    Returns information about a translation.
+    Returns information about the translation.
 
     :param project: Project URL slug
     :type project: string
@@ -1995,7 +2023,7 @@ Translations
     :type component: string
     :param language: Translation language code
     :type language: string
-    :param q: Search query string :ref:`Searching` (optional)
+    :param q: Search query string :doc:`/user/search` (optional)
     :type q: string
     :>json array results: array of component objects; see :http:get:`/api/units/(int:id)/`
 
@@ -2092,7 +2120,7 @@ Translations
 
 .. http:get:: /api/translations/(string:project)/(string:component)/(string:language)/repository/
 
-    Returns information about VCS repository status.
+    Returns information about the VCS repository status.
 
     The response is same as for :http:get:`/api/components/(string:project)/(string:component)/repository/`.
 
@@ -2161,9 +2189,9 @@ and XLIFF.
 
 .. http:get:: /api/units/
 
-    Returns list of translation units.
+    Returns a list of translation units.
 
-    :param q: Search query string :ref:`Searching` (optional)
+    :param q: Search query string :doc:`/user/search` (optional)
     :type q: string
 
     .. seealso::
@@ -2177,7 +2205,11 @@ and XLIFF.
        The ``target`` and ``source`` are now arrays to properly handle plural
        strings.
 
-    Returns information about translation unit.
+    .. versionchanged:: 5.6
+
+       The ``last_updated`` attribute is now exposed.
+
+    Returns information about the translation unit.
 
     :param id: Unit ID
     :type id: int
@@ -2192,7 +2224,7 @@ and XLIFF.
     :>json string note: translation unit note
     :>json string flags: translation unit flags
     :>json array labels: translation unit labels, available on source units
-    :>json int state: unit state, 0 - untranslated, 10 - needs editing, 20 - translated, 30 - approved, 100 - read only
+    :>json int state: unit state, 0 - untranslated, 10 - needs editing, 20 - translated, 30 - approved, 100 - read-only
     :>json boolean fuzzy: whether the unit is fuzzy or marked for review
     :>json boolean translated: whether the unit is translated
     :>json boolean approved: whether the translation is approved
@@ -2248,6 +2280,12 @@ and XLIFF.
     :param id: Unit ID
     :type id: int
 
+.. http:get:: /api/units/(int:id)/translations/
+
+   .. versionadded:: 5.11
+
+   Returns a list of all target translation units for the given source translation unit.
+
 Changes
 +++++++
 
@@ -2270,7 +2308,7 @@ Changes
 
 .. http:get:: /api/changes/(int:id)/
 
-    Returns information about translation change.
+    Returns information about the translation change.
 
     :param id: Change ID
     :type id: int
@@ -2300,7 +2338,7 @@ Screenshots
 
 .. http:get:: /api/screenshots/(int:id)/
 
-    Returns information about screenshot information.
+    Returns information about the screenshot.
 
     :param id: Screenshot ID
     :type id: int
@@ -2726,7 +2764,7 @@ Categories
 
     Returns statistics for a category.
 
-    :param project: Category id
+    :param project: Category ID
     :type project: int
 
     .. seealso::
@@ -2794,7 +2832,7 @@ update individual repositories; see
 
         :ref:`gitlab-setup`
             For instruction on setting up GitLab integration
-        https://docs.gitlab.com/ee/user/project/integrations/webhooks.html
+        https://docs.gitlab.com/user/project/integrations/webhooks/
             Generic information about GitLab Webhooks
         :setting:`ENABLE_HOOKS`
             For enabling hooks for whole Weblate
@@ -2873,95 +2911,6 @@ update individual repositories; see
             Generic information about Gitee Webhooks
         :setting:`ENABLE_HOOKS`
             For enabling hooks for whole Weblate
-
-.. _exports:
-
-Exports
-+++++++
-
-Weblate provides various exports to allow you to further process the data.
-
-.. http:get:: /exports/stats/(string:project)/(string:component)/
-
-    :query string format: Output format: either ``json`` or ``csv``
-
-    .. deprecated:: 2.6
-
-        Please use :http:get:`/api/components/(string:project)/(string:component)/statistics/`
-        and :http:get:`/api/translations/(string:project)/(string:component)/(string:language)/statistics/`
-        instead; it allows access to ACL controlled projects as well.
-
-    Retrieves statistics for given component in given format.
-
-    **Example request:**
-
-    .. sourcecode:: http
-
-        GET /exports/stats/weblate/main/ HTTP/1.1
-        Host: example.com
-        Accept: application/json, text/javascript
-
-    **Example response:**
-
-    .. sourcecode:: http
-
-        HTTP/1.1 200 OK
-        Vary: Accept
-        Content-Type: application/json
-
-        [
-            {
-                "code": "cs",
-                "failing": 0,
-                "failing_percent": 0.0,
-                "fuzzy": 0,
-                "fuzzy_percent": 0.0,
-                "last_author": "Michal Čihař",
-                "last_change": "2012-03-28T15:07:38+00:00",
-                "name": "Czech",
-                "total": 436,
-                "total_words": 15271,
-                "translated": 436,
-                "translated_percent": 100.0,
-                "translated_words": 3201,
-                "url": "http://hosted.weblate.org/engage/weblate/cs/",
-                "url_translate": "http://hosted.weblate.org/projects/weblate/main/cs/"
-            },
-            {
-                "code": "nl",
-                "failing": 21,
-                "failing_percent": 4.8,
-                "fuzzy": 11,
-                "fuzzy_percent": 2.5,
-                "last_author": null,
-                "last_change": null,
-                "name": "Dutch",
-                "total": 436,
-                "total_words": 15271,
-                "translated": 319,
-                "translated_percent": 73.2,
-                "translated_words": 3201,
-                "url": "http://hosted.weblate.org/engage/weblate/nl/",
-                "url_translate": "http://hosted.weblate.org/projects/weblate/main/nl/"
-            },
-            {
-                "code": "el",
-                "failing": 11,
-                "failing_percent": 2.5,
-                "fuzzy": 21,
-                "fuzzy_percent": 4.8,
-                "last_author": null,
-                "last_change": null,
-                "name": "Greek",
-                "total": 436,
-                "total_words": 15271,
-                "translated": 312,
-                "translated_percent": 71.6,
-                "translated_words": 3201,
-                "url": "http://hosted.weblate.org/engage/weblate/el/",
-                "url_translate": "http://hosted.weblate.org/projects/weblate/main/el/"
-            }
-        ]
 
 .. _rss:
 

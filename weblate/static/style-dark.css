@@ -7,6 +7,10 @@
 :root {
   color-scheme: only dark;
   --border: 1px solid #484d50;
+  --background-color: #1a1d1e;
+
+  --altcha-color-text: #d9d3cc;
+  --altcha-color-border: #484d50;
 }
 
 /* User-Agent Style */
@@ -2682,4 +2686,9 @@ tbody.warning {
   background-color: #124437;
   border-color: transparent;
   color: #fff;
+}
+
+/* Editor styles when it has changes */
+.has-changes {
+  border: 2px solid #dabc87 !important;
 }

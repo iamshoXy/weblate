@@ -205,7 +205,7 @@ Django REST Framework
 .. list-table:: Optional dependencies
      :header-rows: 1
 
-     * - pip extra
+     * - Optional dependency specifier
        - Python Packages
        - Weblate feature
 
@@ -397,7 +397,7 @@ Database setup for Weblate
 
 It is recommended to run Weblate with a PostgreSQL database server.
 
-PostgreSQL 12 and higher is supported. PostgreSQL 15 or newer is recommended.
+PostgreSQL 13 and higher is supported. PostgreSQL 15 or newer is recommended.
 
 :ref:`mysql` is supported, but not recommended for new installs.
 
@@ -557,7 +557,7 @@ Weblate can be also used with MySQL or MariaDB, please see
 Django with those. Because of the limitations it is recommended to use
 :ref:`postgresql` for new installations.
 
-Weblate requires MySQL at least 8 or MariaDB at least 10.4.
+Weblate requires MySQL at least 8 or MariaDB at least 10.5.
 
 Following configuration is recommended for Weblate:
 
@@ -1397,8 +1397,8 @@ Content security policy
 +++++++++++++++++++++++
 
 The default Weblate configuration enables ``weblate.middleware.SecurityMiddleware``
-middleware which sets security related HTTP headers like ``Content-Security-Policy``
-or ``X-XSS-Protection``. These are by default set up to work with Weblate and its
+middleware which sets security related HTTP headers like :http:header:`Content-Security-Policy`
+or :http:header:`X-XSS-Protection`. These are by default set up to work with Weblate and its
 configuration, but this might need customization for your environment.
 
 .. seealso::
@@ -1512,7 +1512,7 @@ install everything you need to run Gunicorn. When installing Weblate you can spe
 
 
 Once you have Gunicorn installed, you can run it. This is usually done at the
-system level. The following examples show staring via systemd:
+system level. The following examples show starting via systemd:
 
 .. literalinclude:: ../../weblate/examples/gunicorn.socket
    :caption: /etc/systemd/system/gunicorn.socket
@@ -1731,7 +1731,7 @@ and profiles for defined percentage of operations. This can be configured using
 
 .. seealso::
 
-   `Sentry Performance Monitoring <https://docs.sentry.io/product/performance/>`_,
+   `Sentry Performance Monitoring <https://docs.sentry.io/product/sentry-basics/performance-monitoring/>`_,
    `Sentry Profiling <https://docs.sentry.io/product/explore/profiling/>`_
 
 .. _rollbar-errors:

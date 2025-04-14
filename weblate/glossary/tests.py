@@ -8,6 +8,7 @@ import csv
 import json
 from io import StringIO
 
+from django.db import transaction
 from django.urls import reverse
 
 from weblate.glossary.models import get_glossary_terms, get_glossary_tsv
@@ -326,6 +327,15 @@ class GlossaryTest(TransactionsTestMixin, ViewTestCase):
             unit_sources_and_positions(get_glossary_terms(unit)), {("thank", ((0, 5),))}
         )
 
+    def test_get_newline(self) -> None:
+        unit = self.get_unit("Thank you for using Weblate.")
+        unit.source = "Thank you for using Weblate.\nThank you again."
+        self.add_term("thank", "díky")
+        self.assertEqual(
+            unit_sources_and_positions(get_glossary_terms(unit)),
+            {("thank", ((0, 5), (29, 34)))},
+        )
+
     def do_add_unit(
         self, language: str = "cs", expected_status: int = 200, **kwargs
     ) -> None:
@@ -393,9 +403,10 @@ class GlossaryTest(TransactionsTestMixin, ViewTestCase):
         self.assertEqual(Unit.objects.count(), start + 2)
 
         # Make it terminology
-        unit.translation.component.unload_sources()
-        unit.extra_flags = "terminology"
-        unit.save()
+        with transaction.atomic():
+            unit.translation.component.unload_sources()
+            unit.extra_flags = "terminology"
+            unit.save()
 
         # Verify it has been added to all languages
         self.assertEqual(Unit.objects.count(), start + 4)

@@ -32,6 +32,8 @@ from weblate.checks.models import CHECKS, get_display_checks
 from weblate.glossary.forms import TermForm
 from weblate.glossary.models import get_glossary_terms
 from weblate.screenshots.forms import ScreenshotForm
+from weblate.trans.actions import ActionEvents
+from weblate.trans.autotranslate import AutoTranslate
 from weblate.trans.exceptions import FileParseError, SuggestionSimilarToTranslationError
 from weblate.trans.forms import (
     AutoForm,
@@ -45,7 +47,7 @@ from weblate.trans.forms import (
     ZenTranslationForm,
     get_new_unit_form,
 )
-from weblate.trans.models import Change, Comment, Suggestion, Translation, Unit, Vote
+from weblate.trans.models import Comment, Suggestion, Translation, Unit, Vote
 from weblate.trans.tasks import auto_translate
 from weblate.trans.templatetags.translations import (
     try_linkify_filename,
@@ -56,6 +58,7 @@ from weblate.trans.util import redirect_next, render, split_plural
 from weblate.utils import messages
 from weblate.utils.antispam import is_spam
 from weblate.utils.hash import hash_to_checksum
+from weblate.utils.html import format_html_join_comma, list_to_tuples
 from weblate.utils.messages import get_message_kind
 from weblate.utils.ratelimit import revert_rate_limit, session_ratelimit_post
 from weblate.utils.state import STATE_APPROVED, STATE_FUZZY, STATE_TRANSLATED
@@ -77,13 +80,13 @@ def display_fixups(request: AuthenticatedHttpRequest, fixups) -> None:
     messages.info(
         request,
         gettext("Following fixups were applied to translation: %s")
-        % ", ".join(str(f) for f in fixups),
+        % format_html_join_comma("{}", list_to_tuples(fixups)),
     )
 
 
 def get_other_units(unit):
     """Return other units to show while translating."""
-    with sentry_sdk.start_span(op="unit.others", name=unit.pk):
+    with sentry_sdk.start_span(op="unit.others", name=f"{unit.pk}"):
         result: dict[str, Any] = {
             "total": 0,
             "skipped": False,
@@ -122,36 +125,20 @@ def get_other_units(unit):
 
         base = (
             Unit.objects.filter(
-                query,
                 translation__component__project=component.project,
                 translation__language=translation.language,
             )
             .annotate(matches_current=Count("id", filter=match))
-            .select_related(
-                "source_unit",
-                "translation",
-                "translation__language",
-                "translation__plural",
-                "translation__component",
-                "translation__component__category",
-                "translation__component__category__project",
-                "translation__component__category__category",
-                "translation__component__category__category__project",
-                "translation__component__category__category__category",
-                "translation__component__category__category__category__project",
-                "translation__component__project",
-                "translation__component__source_language",
-            )
+            .prefetch()
+            .prefetch_source()
             .order_by("-matches_current")
         )
 
         units = base.filter(query)
         if unit.target:
-            units = units.union(
-                base.filter(
-                    Q(target__lower__md5=MD5(Lower(Value(unit.target))))
-                    & Q(state__gte=STATE_TRANSLATED)
-                )
+            units |= base.filter(
+                Q(target__lower__md5=MD5(Lower(Value(unit.target))))
+                & Q(state__gte=STATE_TRANSLATED)
             )
 
         # Use memory_db for the query in case it exists. This is supposed
@@ -161,7 +148,7 @@ def get_other_units(unit):
             units = units.using("memory_db")
 
         max_units = 20
-        units_limited = units[:max_units]
+        units_limited = units[:max_units].fill_in_source_translation()
         units_count = len(units_limited)
 
         # Is it only this unit?
@@ -242,7 +229,7 @@ def search(
     if form_valid:
         cleaned_data = form.cleaned_data
         search_url = form.urlencode()
-        search_query = form.get_search_query()
+        search_query = form.cleaned_data["q"]
         name = form.get_name()
         search_items = form.items()
     else:
@@ -365,7 +352,7 @@ def perform_translation(unit, form, request: AuthenticatedHttpRequest) -> bool:
     )
     # Make sure explanation is saved
     if change_explanation:
-        unit.update_explanation(form.cleaned_data["explanation"], user)
+        saved |= unit.update_explanation(form.cleaned_data["explanation"], user)
 
     # Warn about applied fixups
     if unit.fixups:
@@ -414,7 +401,11 @@ def perform_translation(unit, form, request: AuthenticatedHttpRequest) -> bool:
             gettext(
                 "The translation has been saved, however there "
                 "are some newly failing checks: {0}"
-            ).format(", ".join(str(CHECKS[check].name) for check in newchecks)),
+            ).format(
+                format_html_join_comma(
+                    "{}", list_to_tuples(CHECKS[check].name for check in newchecks)
+                )
+            ),
         )
         # Stay on same entry
         return False
@@ -494,8 +485,8 @@ def handle_revert(unit, request: AuthenticatedHttpRequest, next_unit_url):
     unit.translate(
         request.user,
         split_plural(change.old),
-        STATE_FUZZY if change.action == Change.ACTION_MARKED_EDIT else unit.state,
-        change_action=Change.ACTION_REVERT,
+        STATE_FUZZY if change.action == ActionEvents.MARKED_EDIT else unit.state,
+        change_action=ActionEvents.REVERT,
     )
     # Redirect to next entry
     return HttpResponseRedirect(next_unit_url)
@@ -728,7 +719,7 @@ def translate(request: AuthenticatedHttpRequest, path):
             "filter_pos": offset,
             "form": form,
             "comment_form": CommentForm(
-                project,
+                unit.translation,
                 initial={"scope": "global" if unit.is_source else "translation"},
             ),
             "context_form": ContextForm(instance=unit.source_unit, user=user),
@@ -779,23 +770,31 @@ def auto_translation(request: AuthenticatedHttpRequest, path):
         show_form_errors(request, autoform)
         return redirect(translation)
 
-    args = (
-        request.user.id,
-        translation.id,
-        autoform.cleaned_data["mode"],
-        autoform.cleaned_data["filter_type"],
-        autoform.cleaned_data["auto_source"],
-        autoform.cleaned_data["component"],
-        autoform.cleaned_data["engines"],
-        autoform.cleaned_data["threshold"],
-    )
-
     if settings.CELERY_TASK_ALWAYS_EAGER:
-        messages.success(
-            request, auto_translate(*args, translation=translation)["message"]
+        auto = AutoTranslate(
+            user=request.user,
+            translation=translation,
+            mode=autoform.cleaned_data["mode"],
+            filter_type=autoform.cleaned_data["filter_type"],
         )
+        message = auto.perform(
+            auto_source=autoform.cleaned_data["auto_source"],
+            source=autoform.cleaned_data["component"],
+            engines=autoform.cleaned_data["engines"],
+            threshold=autoform.cleaned_data["threshold"],
+        )
+        messages.success(request, message)
     else:
-        task = auto_translate.delay(*args)
+        task = auto_translate.delay(
+            user_id=request.user.id,
+            translation_id=translation.id,
+            mode=autoform.cleaned_data["mode"],
+            filter_type=autoform.cleaned_data["filter_type"],
+            auto_source=autoform.cleaned_data["auto_source"],
+            component=autoform.cleaned_data["component"],
+            engines=autoform.cleaned_data["engines"],
+            threshold=autoform.cleaned_data["threshold"],
+        )
         messages.success(
             request, gettext("Automatic translation in progress"), f"task:{task.id}"
         )
@@ -814,7 +813,7 @@ def comment(request: AuthenticatedHttpRequest, pk):
     if not request.user.has_perm("comment.add", unit.translation):
         raise PermissionDenied
 
-    form = CommentForm(component.project, request.POST)
+    form = CommentForm(unit.translation, request.POST)
 
     if form.is_valid():
         # Is this source or target comment?
@@ -830,7 +829,7 @@ def comment(request: AuthenticatedHttpRequest, pk):
                         request.user,
                         scope.target,
                         STATE_FUZZY,
-                        change_action=Change.ACTION_MARKED_EDIT,
+                        change_action=ActionEvents.MARKED_EDIT,
                     )
             else:
                 label = component.project.label_set.get_or_create(

@@ -137,7 +137,7 @@ class EmailField(forms.EmailField):
     """
     Slightly restricted EmailField.
 
-    We blacklist some additional local parts and customize error messages.
+    We block some additional local parts and customize error messages.
     """
 
     default_validators = [validate_email]
@@ -147,12 +147,16 @@ class EmailField(forms.EmailField):
         super().__init__(*args, **kwargs)
 
 
-class SortedSelect(forms.Select):
+class SortedChoiceWidget(forms.widgets.ChoiceWidget):
     """Wrapper class to sort choices alphabetically."""
 
     def optgroups(self, name, value, attrs=None):
         groups = super().optgroups(name, value, attrs)
         return sort_unicode(groups, lambda val: str(val[1][0]["label"]))
+
+
+class SortedSelect(SortedChoiceWidget, forms.Select):
+    """Wrapper class to sort choices alphabetically."""
 
 
 class ColorWidget(forms.RadioSelect):

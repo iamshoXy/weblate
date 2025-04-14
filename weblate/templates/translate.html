@@ -254,7 +254,7 @@
                           type="submit"
                           name="suggest"
                           {% if project_locked or not user_can_suggest or unit.readonly %}disabled="disabled"{% endif %}
-                          {% if not user_can_suggest %} title="{% trans "Insufficient privileges for adding suggestions." %}" {% elif project_locked %} title="{% trans "This translation is currently locked." %}" {% elif unit.readonly %} title="{% trans "Read only" %}" {% endif %}>
+                          {% if not user_can_suggest %} title="{% trans "Insufficient privileges for adding suggestions." %}" {% elif project_locked %} title="{% trans "This translation is currently locked." %}" {% elif unit.readonly %} title="{% trans "Read-only" %}" {% endif %}>
                     {% icon "suggest.svg" %} {% trans "Suggest" %}
                   </button>
                 {% endif %}
@@ -683,13 +683,11 @@
         <div class="panel panel-default">
           <div class="panel-heading">
             <h4 class="panel-title">
-              {% with glossaries=unit.translation.component.project.glossaries %}
-                {% for glossary in glossaries %}
-                  <a class="pull-right flip btn btn-link btn-xs btn-{{ glossary.glossary_color }}"
-                     title="{% blocktrans with name=glossary.name %}Browse glossary {{ name }}{% endblocktrans %}"
-                     href="{{ glossary.get_absolute_url }}">{% icon "folder-search-outline.svg" %}</a>
-                {% endfor %}
-              {% endwith %}
+              {% for glossary in unit.translation.get_glossaries %}
+                <a class="pull-right flip btn btn-link btn-xs btn-{{ glossary.component.glossary_color }}"
+                   title="{% blocktrans with name=glossary.component.name %}Browse glossary {{ name }}{% endblocktrans %}"
+                   href="{% url 'browse' glossary.get_url_path %}">{% icon "folder-search-outline.svg" %}</a>
+              {% endfor %}
               {% loading_icon "glossary-add" %}
               {% trans "Glossary" %}
             </h4>
@@ -729,6 +727,13 @@
             </h4>
           </div>
           <div class="list-group">
+            {% if path_object != unit.translation %}
+              <div class="list-group-item">
+                <h5>{% trans "Component" %}</h5>
+                <a href="{{ unit.translation.component.get_absolute_url }}">{{ unit.translation.component }}</a>
+              {% endif %}
+            </div>
+
             {% if screenshots or user_can_add_screenshot %}
               <div class="list-group-item">
                 <h5>
@@ -915,6 +920,11 @@
                     {% if unit.translation.component.file_format_flags %}
                       <p>
                         {% blocktrans with object=unit.translation.component.file_format_name flags=unit.translation.component.file_format_flags.format %}<code>{{ flags }}</code> is inherited from {{ object }}.{% endblocktrans %}
+                      </p>
+                    {% endif %}
+                    {% if unit.translation.component.project.check_flags %}
+                      <p>
+                        {% blocktrans with object=unit.translation.component.project flags=unit.translation.component.project.check_flags %}<code>{{ flags }}</code> is inherited from {{ object }}.{% endblocktrans %}
                       </p>
                     {% endif %}
                   </div>

@@ -21,7 +21,8 @@ from django.views.decorators.http import require_POST
 
 from weblate.auth.models import AuthenticatedHttpRequest
 from weblate.logger import LOGGER
-from weblate.trans.models import Change, Component, Project
+from weblate.trans.actions import ActionEvents
+from weblate.trans.models import Component, Project
 from weblate.trans.tasks import perform_update
 from weblate.utils.errors import report_error
 from weblate.utils.views import parse_path
@@ -209,7 +210,7 @@ def vcs_service_hook(request: AuthenticatedHttpRequest, service):
     for obj in enabled_components:
         updates += 1
         LOGGER.info("%s notification will update %s", service_long_name, obj)
-        obj.change_set.create(action=Change.ACTION_HOOK, details=service_data)
+        obj.change_set.create(action=ActionEvents.HOOK, details=service_data)
         perform_update.delay("Component", obj.pk)
 
     match_status = {
@@ -428,15 +429,13 @@ def gitlab_hook_helper(data, request: AuthenticatedHttpRequest):
         data["repository"]["git_ssh_url"],
         data["repository"]["homepage"],
     ]
-    full_name = ssh_url.split(":", 1)[1]
-    full_name = full_name.removesuffix(".git")
 
     return {
         "service_long_name": "GitLab",
         "repo_url": data["repository"]["homepage"],
         "repos": repos,
         "branch": branch,
-        "full_name": full_name,
+        "full_name": data["project"]["path_with_namespace"],
     }
 
 

@@ -133,6 +133,42 @@ def prefetch_stats(queryset):
     return result
 
 
+def get_non_glossary_stats(
+    stats_obj: ProjectLanguageStats | ProjectStats | GlobalStats,
+) -> dict[str, int]:
+    """Return a dictionary with all, source_strings, and translated strings count excluding glossary content."""
+    result = {
+        "all": stats_obj.all,
+        "translated": stats_obj.translated,
+        "source_strings": getattr(stats_obj, "source_strings", stats_obj.all),
+    }
+
+    if isinstance(stats_obj, ProjectLanguageStats):
+        from weblate.trans.models import Translation
+
+        glossaries = Translation.objects.filter(
+            language=stats_obj.language, component__in=stats_obj.project.glossaries
+        ).prefetch()
+    elif isinstance(stats_obj, ProjectStats):
+        glossaries = stats_obj._object.glossaries  # noqa: SLF001
+    elif isinstance(stats_obj, GlobalStats):
+        from weblate.trans.models import Component
+
+        glossaries = Component.objects.filter(is_glossary=True)
+    else:
+        # other stat types do not concern glossaries
+        return result
+
+    for glossary in prefetch_stats(glossaries):
+        result["all"] -= glossary.stats.all
+        result["translated"] -= glossary.stats.translated
+        result["source_strings"] -= getattr(
+            glossary.stats, "source_strings", glossary.stats.all
+        )
+
+    return result
+
+
 class BaseStats:
     """Caching statistics calculator."""
 
@@ -277,6 +313,14 @@ class BaseStats:
             # TODO: Drop in Weblate 6
             # Migration path for legacy stat data
             return self._data.get(name, 0)
+
+        # Virtual fields
+        if name == "translated_without_checks":
+            return self.translated - self.translated_checks
+        if name == "translated_without_checks_words":
+            return self.translated_words - self.translated_checks_words
+        if name == "translated_without_checks_chars":
+            return self.translated_chars - self.translated_checks_chars
 
         # Calculate missing data
         if name not in self._data:
@@ -1073,9 +1117,9 @@ class ProjectLanguage(BaseURLMixin):
     @cached_property
     def translation_set(self):
         all_langs = self.language.translation_set.prefetch()
-        result = all_langs.filter(component__project=self.project).union(
-            all_langs.filter(component__links=self.project)
-        )
+        result = all_langs.filter(component__project=self.project)
+        if self.project.has_shared_components:
+            result |= all_langs.filter(component__links=self.project)
         for item in result:
             item.is_shared = (
                 None
@@ -1229,7 +1273,7 @@ class CategoryStats(ParentAggregatingStats):
             yield from self._object.project.stats.get_update_objects()
 
     def get_child_objects(self):
-        return self._object.component_set.only("id", "category")
+        return self._object.component_set.only("id", "category", "check_flags")
 
     def get_category_objects(self):
         return self._object.category_set.only("id", "category")
@@ -1250,7 +1294,7 @@ class ProjectStats(ParentAggregatingStats):
         return self._object.enable_review
 
     def get_child_objects(self):
-        return self._object.component_set.only("id", "project")
+        return self._object.component_set.only("id", "project", "check_flags")
 
     def get_single_language_stats(self, language):
         return ProjectLanguageStats(ProjectLanguage(self._object, language))
@@ -1386,6 +1430,7 @@ class GhostProjectLanguageStats(GhostStats):
     language: Language
     component: Component
     is_shared: Project | None
+    is_source: bool = False
 
     def __init__(
         self, component: Component, language: Language, is_shared: Project | None = None

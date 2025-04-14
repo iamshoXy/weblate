@@ -275,6 +275,32 @@ Using non standard code: ``ia_FOO:ia``
     :ref:`language-code`,
     :ref:`language-parsing-codes`
 
+.. _project-secondary_language:
+
+Secondary language
+++++++++++++++++++
+
+.. versionadded:: 5.11
+
+Additional language to show together with the source language while translating.
+
+Optionally, it can be also used as a source for the machine translation.
+
+.. seealso::
+
+   :ref:`secondary-languages`,
+   :ref:`mt-sources`
+
+.. _project-check_flags:
+
+Translation flags
++++++++++++++++++
+
+.. versionadded:: 5.11
+
+Customization of quality checks and other Weblate behavior, see :ref:`custom-checks`.
+
+
 .. _component:
 
 Component configuration
@@ -650,11 +676,13 @@ License of the translation (does not need to be the same as the source code lice
 
 .. _component-agreement:
 
-Contributor agreement
-+++++++++++++++++++++
+Contributor license agreement
++++++++++++++++++++++++++++++
 
-User agreement which needs to be approved before a user can translate this
-component.
+Contributor license agreement which needs to be approved before a user can
+translate this component.
+
+Markdown can be used for text formatting or inserting links.
 
 .. _component-new_lang:
 
@@ -955,6 +983,26 @@ Regular expression used to determine the variants of a string, see
 .. seealso::
 
    :ref:`faq-vcs`, :ref:`alerts`
+
+.. _component-secondary_language:
+
+Secondary language
+++++++++++++++++++
+
+.. versionadded:: 5.11
+
+Additional language to show together with the source language while translating.
+
+Optionally, it can be also used as a source for the machine translation.
+
+.. hint::
+
+   This setting is inherited from the project if left empty.
+
+.. seealso::
+
+   :ref:`secondary-languages`,
+   :ref:`mt-sources`
 
 .. _component-priority:
 

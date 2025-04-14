@@ -335,7 +335,7 @@
                       <em>{% trans "Site-wide team" %}</em>
                     </td>
                   {% endif %}
-                  <th>{{ group.name }}</th>
+                  <th>{{ group }}</th>
                   <td class="number">{{ group.user__count }}</td>
                   <td>
                     <a href=""
@@ -383,6 +383,9 @@
                 <input type="submit" value="{% trans "Save" %}" class="btn btn-primary" />
               </div>
             </div>
+          </form>
+          <form method="post">
+            {% csrf_token %}
             <div class="panel panel-default">
               <div class="panel-heading">
                 <h4 class="panel-title">
@@ -392,19 +395,31 @@
               </div>
               <div class="panel-body">
                 {% if page_user.profile.has_2fa %}
-                  {% trans "User has two-factor authentication configured." %}
+                  {% trans "The user has two-factor authentication." %}
                 {% else %}
-                  {% trans "User doesn't have two-factor authentication configured." %}
+                  {% trans "The user doesn't have two-factor authentication." %}
                 {% endif %}
               </div>
               {% if page_user.profile.has_2fa %}
                 <div class="panel-footer">
                   <input type="submit"
                          name="remove_2fa"
-                         value="{% trans "Disable two-factor authentication" %}"
+                         value="{% trans "Turn off two-factor authentication" %}"
                          class="btn-danger red">
                 </div>
               {% endif %}
+            </div>
+            <div class="panel panel-danger">
+              <div class="panel-heading">
+                <h4 class="panel-title">{% trans "Password reset" %}</h4>
+              </div>
+              <div class="panel-body">{% trans "Disables password authentication for the user." %}</div>
+              <div class="panel-footer">
+                <input type="submit"
+                       name="disable_password"
+                       value="{% trans "Disable password" %}"
+                       class="btn-danger red">
+              </div>
             </div>
             <div class="panel panel-danger">
               <div class="panel-heading">

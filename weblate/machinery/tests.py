@@ -29,7 +29,7 @@ from google.cloud.translate import (
 )
 
 import weblate.machinery.models
-from weblate.checks.tests.test_checks import MockTranslation, MockUnit
+from weblate.checks.tests.test_checks import MockUnit
 from weblate.configuration.models import Setting, SettingCategory
 from weblate.glossary.models import render_glossary_units_tsv
 from weblate.lang.models import Language
@@ -64,11 +64,13 @@ from weblate.machinery.yandex import YandexTranslation
 from weblate.machinery.yandexv2 import YandexV2Translation
 from weblate.machinery.youdao import YoudaoTranslation
 from weblate.trans.models import Project, Unit
-from weblate.trans.tests.test_views import FixtureTestCase
+from weblate.trans.tests.test_views import FixtureTestCase, ViewTestCase
 from weblate.trans.tests.utils import get_test_file
 from weblate.utils.classloader import load_class
 from weblate.utils.db import TransactionsTestMixin
 from weblate.utils.state import STATE_TRANSLATED
+
+from .types import SourceLanguageChoices
 
 if TYPE_CHECKING:
     from requests import PreparedRequest
@@ -262,7 +264,7 @@ class BaseMachineTranslationTest(TestCase):
     SUPPORTED = "cs"
     SUPPORTED_VARIANT = "cs_CZ"
     NOTSUPPORTED: str | None = "tg"
-    NOTSUPPORTED_VARIANT = "de_CZ"
+    NOTSUPPORTED_VARIANT = "fr_CZ"
     SOURCE_BLANK = "Hello"
     SOURCE_TRANSLATED = "Hello, world!"
     EXPECTED_LEN = 2
@@ -450,7 +452,7 @@ class GlossaryTranslationTest(BaseMachineTranslationTest):
     MACHINE_CLS = DummyGlossaryTranslation
 
     @patch("weblate.glossary.models.get_glossary_tsv", new=lambda _: "foo\tbar")
-    def test_translate(self):
+    def test_translate(self) -> None:
         """Test glossary translation."""
         machine = self.get_machine()
         self.assertEqual(machine.list_glossaries(), {})
@@ -476,11 +478,12 @@ class GlossaryTranslationTest(BaseMachineTranslationTest):
         super().test_translate()
         list_glossaries_patcher.stop()
 
-    def test_glossary_cleanup(self):
+    def test_glossary_cleanup(self) -> None:
         """
         Test cleanup of glossary TSV content.
 
         Any problematic leading character is removed from term
+        Leading and trailing whitespaces are stripped
         """
         unit = MockUnit(code="cs", source="foo", target="bar")
         self.assertEqual(render_glossary_units_tsv([unit]), "foo\tbar")
@@ -499,17 +502,37 @@ class GlossaryTranslationTest(BaseMachineTranslationTest):
         unit = MockUnit(code="cs", source="%foo", target="%bar")
         self.assertEqual(render_glossary_units_tsv([unit]), "foo\tbar")
 
-        # # multiple prohibited characters are cleaned
+        # multiple prohibited characters are cleaned
         unit = MockUnit(code="cs", source="==foo", target="==bar")
         self.assertEqual(render_glossary_units_tsv([unit]), "foo\tbar")
 
-        # # no character cleaned
+        # whitespace correctly stripped
+        unit = MockUnit(code="cs", source=" foo  ", target=" bar  ")
+        self.assertEqual(render_glossary_units_tsv([unit]), "foo\tbar")
+
+        # whitespaces after prohibited characters correctly stripped
+        unit = MockUnit(code="cs", source="% foo  ", target="% bar  ")
+        self.assertEqual(render_glossary_units_tsv([unit]), "foo\tbar")
+        unit = MockUnit(code="cs", source="% foo  ", target="% % bar  ")
+        self.assertEqual(render_glossary_units_tsv([unit]), "foo\tbar")
+
+        # other Unicode whitespaces are correctly stripped
+        unit = MockUnit(code="cs", source="\r- foo", target="bar")
+        self.assertEqual(render_glossary_units_tsv([unit]), "foo\tbar")
+        unit = MockUnit(code="cs", source="|\u00a0foo", target="bar")
+        self.assertEqual(render_glossary_units_tsv([unit]), "foo\tbar")
+        unit = MockUnit(code="cs", source="\n\nfoo", target="bar")
+        self.assertEqual(render_glossary_units_tsv([unit]), "foo\tbar")
+        unit = MockUnit(code="cs", source="%\u2002foo  ", target="%bar")
+        self.assertEqual(render_glossary_units_tsv([unit]), "foo\tbar")
+
+        # no character cleaned
         unit = MockUnit(code="cs", source="foo=", target="bar=")
         self.assertEqual(render_glossary_units_tsv([unit]), "foo=\tbar=")
         unit = MockUnit(code="cs", source=":foo", target=":bar")
         self.assertEqual(render_glossary_units_tsv([unit]), ":foo\t:bar")
 
-    def test_glossary_changes_invalidates_result_cache(self):
+    def test_glossary_changes_invalidates_result_cache(self) -> None:
         machine = self.get_machine(cache=True)
         source_text = "Hello, world!"
         unit = MockUnit(code="cs", source=source_text, target="")
@@ -565,6 +588,7 @@ class GlosbeTranslationTest(BaseMachineTranslationTest):
             status=429,
         )
 
+    @responses.activate
     def test_ratelimit(self) -> None:
         """Test rate limit response handling."""
         # This raises an exception
@@ -643,7 +667,7 @@ class ApertiumAPYTranslationTest(BaseMachineTranslationTest):
         )
 
     @responses.activate
-    def test_validate_settings(self):
+    def test_validate_settings(self) -> None:
         self.mock_response()
         machine = self.get_machine()
         machine.validate_settings()
@@ -695,8 +719,7 @@ class MicrosoftCognitiveTranslationTest(BaseMachineTranslationTest):
         )
         responses.add(
             responses.GET,
-            "https://api.cognitive.microsofttranslator.com/"
-            "languages?api-version=3.0",
+            "https://api.cognitive.microsofttranslator.com/languages?api-version=3.0",
             json=MS_SUPPORTED_LANG_RESP,
         )
         responses.add(
@@ -718,6 +741,13 @@ class MicrosoftCognitiveTranslationTest(BaseMachineTranslationTest):
             json=MICROSOFT_RESPONSE,
         )
 
+    def test_map_codes(self) -> None:
+        machine = self.get_machine()
+        self.assertEqual(machine.map_language_code("zh_Hant"), "zh-Hant")
+        self.assertEqual(machine.map_language_code("zh_TW"), "zh-Hant")
+        self.assertEqual(machine.map_language_code("fr_CA"), "fr-ca")
+        self.assertEqual(machine.map_language_code("iu_Latn"), "iu-Latn")
+
 
 class MicrosoftCognitiveTranslationRegionTest(MicrosoftCognitiveTranslationTest):
     CONFIGURATION = {
@@ -736,8 +766,7 @@ class MicrosoftCognitiveTranslationRegionTest(MicrosoftCognitiveTranslationTest)
         )
         responses.add(
             responses.GET,
-            "https://api.cognitive.microsofttranslator.com/"
-            "languages?api-version=3.0",
+            "https://api.cognitive.microsofttranslator.com/languages?api-version=3.0",
             json=MS_SUPPORTED_LANG_RESP,
         )
         responses.add(
@@ -1012,10 +1041,10 @@ class GoogleV3TranslationTest(BaseMachineTranslationTest):
         self.addCleanup(get_credentials_patcher.stop)
 
         class MockBlob(MagicMock):
-            def upload_from_string(self, *args, **kwargs):
+            def upload_from_string(self, *args, **kwargs) -> None:
                 """Mock google.cloud.storage.Blob.upload_from_string."""
 
-            def delete(self, *args, **kwargs):
+            def delete(self, *args, **kwargs) -> None:
                 """Mock google.cloud.storage.Blob.delete."""
 
         class MockBucket(MagicMock):
@@ -1401,7 +1430,7 @@ class ModernMTHubTest(BaseMachineTranslationTest):
 
         self.mock_list_glossaries()
 
-    def mock_list_glossaries(self, *id_name_date: tuple[int, str, str | None]):
+    def mock_list_glossaries(self, *id_name_date: tuple[int, str, str | None]) -> None:
         """Set up mock responses for list of glossaries in ModernMT."""
         data: list[dict] = [
             {
@@ -1856,6 +1885,30 @@ class DeepLTranslationTest(BaseMachineTranslationTest):
             self.SUPPORTED, self.SOURCE_TRANSLATED, self.EXPECTED_LEN, machine=machine
         )
         self.assertEqual(len(responses.calls), 0)
+
+    def test_api_url(self) -> None:
+        self.assertEqual(
+            self.MACHINE_CLS(self.CONFIGURATION).api_base_url,
+            "https://api.deepl.com/v2",
+        )
+        self.assertEqual(
+            self.MACHINE_CLS(
+                {
+                    "key": "KEY:fx",
+                    "url": "https://api.deepl.com/v2",
+                }
+            ).api_base_url,
+            "https://api-free.deepl.com/v2",
+        )
+        self.assertEqual(
+            self.MACHINE_CLS(
+                {
+                    "key": "KEY:fx",
+                    "url": "https://example.com/v2",
+                }
+            ).api_base_url,
+            "https://example.com/v2",
+        )
 
 
 class LibreTranslateTranslationTest(BaseMachineTranslationTest):
@@ -2449,49 +2502,174 @@ class WeblateTranslationTest(TransactionsTestMixin, FixtureTestCase):
         self.assertNotEqual(results, [])
 
 
-class CyrTranslitTranslationTest(TransactionsTestMixin, FixtureTestCase):
+class CyrTranslitTranslationTest(ViewTestCase):
+    def create_component(self):
+        return self.create_po_new_base()
+
     def get_machine(self):
         return CyrTranslitTranslation({})
 
-    def test_transliterate(self):
+    def test_notsupported(self) -> None:
         machine = self.get_machine()
 
         # check empty result when source or translation language isn't supported
-        unit = MockUnit(code="cs", source="Ahoj světe!")
-        unit.translation = MockTranslation(code="cs", source_language="en")
+        unit = self.get_unit("Hello, world!\n")
         results = machine.translate(unit, self.user)
         self.assertEqual(results, [])
+
+    def test_notsource(self) -> None:
+        machine = self.get_machine()
 
         # check empty result when source and translation aren't from same language
-        unit = MockUnit(code="cnr_Cyrl", source="something else")
-        unit.translation = MockTranslation(code="cnr_Cyrl", source_language="sr_Latn")
+        self.component.add_new_language(Language.objects.get(code="cnr_Cyrl"), None)
+        unit = self.get_unit("Hello, world!\n", language="cnr_Cyrl")
         results = machine.translate(unit, self.user)
         self.assertEqual(results, [])
 
+    def test_fallback_language(self):
+        machine = self.get_machine()
+
+        # Add translations and prepare units
+        self.component.add_new_language(Language.objects.get(code="sr_Latn"), None)
+        self.component.add_new_language(Language.objects.get(code="sr_Cyrl"), None)
+        self.edit_unit("Hello, world!\n", "Moj hoverkraft je pun jegulja", "sr_Latn")
+        latn_unit = self.get_unit("Hello, world!\n", language="sr_Latn")
+        self.assertNotEqual(latn_unit.target, "")
+        cyrl_unit = self.get_unit("Hello, world!\n", language="sr_Cyrl")
+        self.assertEqual(cyrl_unit.target, "")
+
         # check latin to cyrillic
-        unit = MockUnit(code="sr_Cyrl", source="Moj hoverkraft je pun jegulja")
-        unit.translation = MockTranslation(code="sr_Cyrl", source_language="sr_Latn")
+        results = machine.translate(cyrl_unit, self.user)
+        self.assertEqual(
+            results,
+            [
+                [
+                    {
+                        "text": "Мој ховеркрафт је пун јегуља\n",
+                        "quality": 100,
+                        "service": "CyrTranslit",
+                        "source": "Moj hoverkraft je pun jegulja\n",
+                        "original_source": "Moj hoverkraft je pun jegulja\n",
+                    }
+                ]
+            ],
+        )
+
+        # Test not matching translation
+        results = machine.translate(latn_unit, self.user)
+        self.assertEqual(
+            results,
+            [],
+        )
+
+        # check cyrillic to latin
+        self.edit_unit("Hello, world!\n", "Мој ховеркрафт је пун јегуља\n", "sr_Cyrl")
+        results = machine.translate(latn_unit, self.user)
+        self.assertEqual(results[0][0]["text"], "Moj hoverkraft je pun jegulja\n")
+
+        # Force using source language only
+        machine = CyrTranslitTranslation(
+            {"source_language": SourceLanguageChoices.SOURCE}
+        )
+        results = machine.translate(latn_unit, self.user)
+        self.assertEqual(results, [])
+
+        # Secondary language source
+        machine = CyrTranslitTranslation(
+            {"source_language": SourceLanguageChoices.SECONDARY}
+        )
+
+        # None secondary language falls back to auto
+        results = machine.translate(latn_unit, self.user)
+        self.assertEqual(results[0][0]["text"], "Moj hoverkraft je pun jegulja\n")
+
+        cyrillic_lang = Language.objects.get(code="sr_Cyrl")
+        latin_lang = Language.objects.get(code="sr_Latn")
+
+        # Not matching source language
+        self.project.secondary_language = latin_lang
+        self.project.save(update_fields=["secondary_language"])
+        results = machine.translate(latn_unit, self.user)
+        self.assertEqual(results, [])
+
+        # Matching source language
+        self.project.secondary_language = cyrillic_lang
+        self.project.save(update_fields=["secondary_language"])
+        results = machine.translate(latn_unit, self.user)
+        self.assertEqual(results[0][0]["text"], "Moj hoverkraft je pun jegulja\n")
+
+        # Component secondary overrides project
+        self.component.secondary_language = latin_lang
+        self.component.save(update_fields=["secondary_language"])
+        results = machine.translate(latn_unit, self.user)
+        self.assertEqual(results, [])
+
+        self.component.secondary_language = cyrillic_lang
+        self.component.save(update_fields=["secondary_language"])
+        results = machine.translate(latn_unit, self.user)
+        self.assertEqual(results[0][0]["text"], "Moj hoverkraft je pun jegulja\n")
+
+    def test_multiple_languages(self):
+        machine = self.get_machine()
+
+        # Add translations and prepare units
+        self.component.add_new_language(Language.objects.get(code="sr_Cyrl"), None)
+        self.component.add_new_language(Language.objects.get(code="sr@ijekavian"), None)
+        self.component.add_new_language(
+            Language.objects.get(code="sr@ijekavian_Latn"), None
+        )
+        self.edit_unit(
+            "Hello, world!\n", "Мој ховеркрафт је пун јегуља\n", "sr@ijekavian"
+        )
+        self.edit_unit("Hello, world!\n", "Мој ховеркрафт је пун\n", "sr_Cyrl")
+
+        unit = self.get_unit("Hello, world!\n", language="sr@ijekavian_Latn")
         results = machine.translate(unit, self.user)
         self.assertEqual(
             results,
             [
                 [
                     {
-                        "text": "Мој ховеркрафт је пун јегуља",
+                        "text": "Moj hoverkraft je pun jegulja\n",
                         "quality": 100,
                         "service": "CyrTranslit",
-                        "source": "Moj hoverkraft je pun jegulja",
-                        "original_source": "Moj hoverkraft je pun jegulja",
+                        "source": "Мој ховеркрафт је пун јегуља\n",
+                        "original_source": "Мој ховеркрафт је пун јегуља\n",
                     }
                 ]
             ],
         )
 
+    def test_placeholders(self):
+        machine = self.get_machine()
+
+        # Add translations and prepare units
+        self.component.add_new_language(Language.objects.get(code="sr_Latn"), None)
+        self.component.add_new_language(Language.objects.get(code="sr_Cyrl"), None)
+        self.edit_unit(
+            "Orangutan has %d banana.\n", "Орангутан има %d банану.\n", "sr_Cyrl"
+        )
+
+        unit = self.get_unit("Orangutan has %d banana.\n", language="sr_Latn")
+
         # check cyrillic to latin
-        unit = MockUnit(code="sr_Latn", source="Мој ховеркрафт је пун јегуља")
-        unit.translation = MockTranslation(code="sr_Latn", source_language="sr_Cyrl")
         results = machine.translate(unit, self.user)
-        self.assertEqual(results[0][0]["text"], "Moj hoverkraft je pun jegulja")
+        self.assertEqual(
+            [
+                [
+                    {
+                        "original_source": "Орангутан има %d банану.\n",
+                        "quality": 100,
+                        "service": "CyrTranslit",
+                        "source": "Орангутан има %d банану.\n",
+                        "text": "Orangutan ima %d bananu.\n",
+                    }
+                ],
+                [],
+                [],
+            ],
+            results,
+        )
 
 
 class ViewsTest(FixtureTestCase):
@@ -2738,4 +2916,51 @@ class CommandTest(FixtureTestCase):
         setting = Setting.objects.get(category=SettingCategory.MT, name="deepl")
         self.assertEqual(
             setting.value, {"key": "x2", "url": "https://api.deepl.com/v2/"}
+        )
+
+
+class SourceLanguageTranslateTestCase(FixtureTestCase):
+    LANGUAGE = "de"
+    SOURCE = "Hello, world!\n"
+    TRANSLATION = "Hallo, Welt!\n"
+
+    def prepare(self) -> Unit:
+        # Set German translation
+        self.edit_unit(self.SOURCE, self.TRANSLATION, language=self.LANGUAGE)
+        return self.get_unit(self.SOURCE)
+
+    def test_translate(self):
+        czech_unit = self.prepare()
+        machine = DummyTranslation({})
+        translation = machine.translate(
+            czech_unit, source_language=Language.objects.get(code=self.LANGUAGE)
+        )
+        self.assertEqual(
+            translation,
+            [
+                [
+                    {
+                        "text": "Ahoj německý světe!",
+                        "quality": 100,
+                        "service": "Dummy",
+                        "source": "Hallo, Welt!\n",
+                        "original_source": "Hallo, Welt!\n",
+                    }
+                ]
+            ],
+        )
+
+    def test_batch_translate(self):
+        czech_unit = self.prepare()
+        machine = DummyTranslation({})
+        machine.batch_translate(
+            [czech_unit], source_language=Language.objects.get(code=self.LANGUAGE)
+        )
+        self.assertEqual(
+            czech_unit.machinery,
+            {
+                "translation": ["Ahoj německý světe!"],
+                "origin": [machine],
+                "quality": [100],
+            },
         )

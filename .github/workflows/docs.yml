@@ -7,7 +7,6 @@ name: Documentation
 on:
   push:
     branches-ignore:
-    - deepsource-fix-**
     - renovate/**
     - weblate
   pull_request:
@@ -18,15 +17,37 @@ permissions:
   contents: read
 
 jobs:
-  build:
+  list-languages:
     runs-on: ubuntu-24.04
+    outputs:
+      languages: ${{ steps.list.outputs.languages }}
+    steps:
+    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+    - uses: astral-sh/setup-uv@0c5e2b8115b80b4c7c5ddf6ffdd634974642d182 # v5.4.1
+    - name: Set up Python
+      uses: actions/setup-python@8d9ed9ac5c53483de85588cdf95a591a75ab9f55 # v5.5.0
+      with:
+        python-version: '3.13'
+    - run: uv run --no-project scripts/list-documentation-languages.py >>"$GITHUB_OUTPUT"
+      id: list
+
+  translations:
+    runs-on: ubuntu-24.04
+    needs:
+    - list-languages
     name: Sphinx
+    strategy:
+      fail-fast: false
+      matrix:
+        language: ${{ fromJson(needs.list-languages.outputs.languages) }}
+    env:
+      READTHEDOCS_LANGUAGE: ${{ matrix.language }}
 
     steps:
-    - uses: actions/checkout@v4
-    - uses: astral-sh/setup-uv@v5
+    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+    - uses: astral-sh/setup-uv@0c5e2b8115b80b4c7c5ddf6ffdd634974642d182 # v5.4.1
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@8d9ed9ac5c53483de85588cdf95a591a75ab9f55 # v5.5.0
       with:
         python-version: '3.13'
     - name: Install apt dependencies
@@ -41,7 +62,16 @@ jobs:
         echo "::add-matcher::.github/matchers/sphinx.json"
         ./ci/run-docs
         echo "::remove-matcher owner=sphinx::"
-    - uses: actions/upload-artifact@v4.5.0
+    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
       with:
-        name: Documentation
+        name: Documentation ${{ matrix.language }}
         path: docs/_build/html
+
+  build:
+    runs-on: ubuntu-24.04
+    name: Sphinx
+    needs:
+    - translations
+    steps:
+    # This is dependency only job to collect all test results
+    - run: echo

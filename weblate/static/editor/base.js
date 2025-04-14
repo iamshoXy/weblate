@@ -7,6 +7,8 @@
 var WLT = WLT || {};
 
 WLT.Config = (() => ({
+  // biome-ignore lint/performance/useTopLevelRegex: TODO: factor out
+  // biome-ignore lint/style/useNamingConvention: TODO: fix naming
   IS_MAC: /Mac|iPod|iPhone|iPad/.test(navigator.platform),
 }))();
 
@@ -26,6 +28,21 @@ WLT.Utils = (() => ({
     /* Review workflow */
     $el.find('input[name="review"][value="20"]').prop("checked", true);
   },
+
+  /**
+   * Indicate that the translation has changed
+   * by appending a warning before the editor.
+   * @returns {void}
+   */
+  indicateChanges: () => {
+    const $warning = $("<span class='text-warning'/>");
+    const $editorArea = $(".translator .translation-editor");
+    $warning.text(gettext("Unsaved changes!"));
+    if ($editorArea.next(".text-warning").length === 0) {
+      $warning.insertAfter($editorArea);
+      $editorArea.addClass("has-changes");
+    }
+  },
 }))();
 
 WLT.Editor = (() => {
@@ -41,6 +58,7 @@ WLT.Editor = (() => {
 
     this.$editor.on("input", translationAreaSelector, (e) => {
       WLT.Utils.markTranslated($(e.target).closest("form"));
+      WLT.Utils.indicateChanges();
       hasChanges = true;
     });
 
@@ -72,7 +90,7 @@ WLT.Editor = (() => {
     });
 
     /* Copy source text */
-    this.$editor.on("click", "[data-clone-value]", function (e) {
+    this.$editor.on("click", "[data-clone-value]", function (_e) {
       const $this = $(this);
       const $document = $(document);
       const cloneText = this.getAttribute("data-clone-value");
@@ -105,6 +123,7 @@ WLT.Editor = (() => {
         });
       }
       WLT.Utils.markFuzzy($this.closest("form"));
+      WLT.Utils.indicateChanges();
       hasChanges = true;
       return false;
     });
@@ -117,6 +136,7 @@ WLT.Editor = (() => {
 
       container.find(".translation-editor").attr("dir", direction);
       container.find(".highlighted-output").attr("dir", direction);
+      WLT.Utils.indicateChanges();
       hasChanges = true;
     });
 
@@ -130,6 +150,7 @@ WLT.Editor = (() => {
         .find(".translation-editor")
         .insertAtCaret(text);
       e.preventDefault();
+      WLT.Utils.indicateChanges();
       hasChanges = true;
     });
 
@@ -138,16 +159,30 @@ WLT.Editor = (() => {
 
     this.$translationArea[0].focus();
 
+    // Show confirmation dialog if changes have been made
+    // when leaving the page
+    addEventListener("beforeunload", (e) => {
+      if (hasChanges) {
+        e.preventDefault();
+        return true; // Backwards compatibility
+      }
+    });
+
     // Skip confirmation
-    this.$editor.on("click", ".skip", (e) => {
+    this.$editor.on("click", ".skip", (_e) => {
       if (hasChanges) {
         return confirm(
           gettext("You have unsaved changes. Are you sure you want to skip?"),
         );
       }
     });
+
+    this.$editor.on("submit", () => {
+      hasChanges = false;
+    });
   }
 
+  // biome-ignore lint/suspicious/noEmptyBlockStatements: TODO
   EditorBase.prototype.init = () => {};
 
   EditorBase.prototype.initHighlight = function () {
@@ -159,12 +194,13 @@ WLT.Editor = (() => {
       const $this = $(this);
       insertEditor(this.getAttribute("data-value"), $this);
       e.preventDefault();
+      WLT.Utils.indicateChanges();
       hasChanges = true;
     });
 
     /* and shortcuts */
     for (let i = 1; i < 10; i++) {
-      Mousetrap.bindGlobal(`mod+${i}`, (e) => false);
+      Mousetrap.bindGlobal(`mod+${i}`, (_e) => false);
     }
 
     const $hlCheck = $(hlSelector);
@@ -184,7 +220,7 @@ WLT.Editor = (() => {
           $this.attr("title", title);
           $this.find(hlNumberSelector).html($("<kbd/>").text(key));
 
-          Mousetrap.bindGlobal(`mod+${key}`, (e) => {
+          Mousetrap.bindGlobal(`mod+${key}`, (_e) => {
             $this.click();
             return false;
           });
@@ -197,14 +233,14 @@ WLT.Editor = (() => {
 
     Mousetrap.bindGlobal(
       "mod",
-      (e) => {
+      (_e) => {
         $(hlNumberSelector).show();
       },
       "keydown",
     );
     Mousetrap.bindGlobal(
       "mod",
-      (e) => {
+      (_e) => {
         $(hlNumberSelector).hide();
       },
       "keyup",
@@ -239,6 +275,7 @@ WLT.Editor = (() => {
   }
 
   return {
+    // biome-ignore lint/style/useNamingConvention: TODO
     Base: EditorBase,
   };
 })();

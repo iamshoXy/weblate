@@ -75,12 +75,15 @@ class WeblateConf(AppConf):
     CSP_FONT_SRC = []
     CSP_FORM_SRC = []
 
-    INTERLEDGER_PAYMENT_POINTERS = ["$ilp.uphold.com/ENU7fREdeZi9"]
+    INTERLEDGER_PAYMENT_POINTERS = []
+    INTERLEDGER_PAYMENT_BUILTIN = True
 
     PROJECT_NAME_RESTRICT_RE = None
     PROJECT_WEB_RESTRICT_RE = None
     PROJECT_WEB_RESTRICT_HOST = {"localhost"}
     PROJECT_WEB_RESTRICT_NUMERIC = True
+
+    LOCALE_FILTER_FILES = True
 
     class Meta:
         prefix = ""

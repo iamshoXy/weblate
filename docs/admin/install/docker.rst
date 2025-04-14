@@ -630,6 +630,19 @@ Generic settings
         environment:
           WEBLATE_REGISTRATION_OPEN: 0
 
+.. envvar:: WEBLATE_REGISTRATION_CAPTCHA
+
+   .. versionadded:: 5.10
+
+   Configures whether captcha is used for registration and other unauthenticated actions, see :std:setting:`REGISTRATION_CAPTCHA`.
+
+   **Example:**
+
+   .. code-block:: yaml
+
+      environment:
+        WEBLATE_REGISTRATION_CAPTCHA: 0
+
 .. envvar:: WEBLATE_REGISTRATION_ALLOW_BACKENDS
 
    Configure which authentication methods can be used to create new account via
@@ -692,6 +705,12 @@ Generic settings
       :setting:`ENABLE_HTTPS`
       :ref:`production-site`,
       :envvar:`WEBLATE_SECURE_PROXY_SSL_HEADER`
+
+.. envvar:: WEBLATE_INTERLEDGER_PAYMENT_BUILTIN
+
+    .. versionadded:: 5.11
+
+    Configures :setting:`INTERLEDGER_PAYMENT_BUILTIN`.
 
 .. envvar:: WEBLATE_INTERLEDGER_PAYMENT_POINTERS
 
@@ -801,7 +820,7 @@ Generic settings
 .. envvar:: WEBLATE_DEFAULT_PULL_MESSAGE
 
     Configures the default title and message for pull requests via API by changing
-    :setting:`DEFAULT_PULL_MESSAGE`
+    :setting:`DEFAULT_PULL_MESSAGE`.
 
     .. seealso::
 
@@ -863,7 +882,7 @@ Generic settings
 .. envvar:: WEBLATE_CSP_FONT_SRC
 .. envvar:: WEBLATE_CSP_FORM_SRC
 
-    Allows to customize ``Content-Security-Policy`` HTTP header.
+    Allows to customize :http:header:`Content-Security-Policy` HTTP header.
 
     .. seealso::
 
@@ -881,11 +900,11 @@ Generic settings
 
 .. envvar:: WEBLATE_LICENSE_REQUIRED
 
-   Configures :setting:`LICENSE_REQUIRED`
+   Configures :setting:`LICENSE_REQUIRED`.
 
 .. envvar:: WEBLATE_WEBSITE_REQUIRED
 
-   Configures :setting:`WEBSITE_REQUIRED`
+   Configures :setting:`WEBSITE_REQUIRED`.
 
 .. envvar:: WEBLATE_HIDE_VERSION
 
@@ -1137,7 +1156,7 @@ Or the path to a file containing the Python dictionary:
 .. envvar:: WEBLATE_BITBUCKETSERVER_HOST
 .. envvar:: WEBLATE_BITBUCKETSERVER_CREDENTIALS
 
-    Configures :ref:`vcs-bitbucket-server` by changing :setting:`BITBUCKETSERVER_CREDENTIALS`.
+    Configures :ref:`vcs-bitbucket-data-center` by changing :setting:`BITBUCKETSERVER_CREDENTIALS`.
 
 .. envvar:: WEBLATE_BITBUCKETCLOUD_USERNAME
 .. envvar:: WEBLATE_BITBUCKETCLOUD_WORKSPACE
@@ -1347,8 +1366,7 @@ Keycloak
 .. envvar:: WEBLATE_SOCIAL_AUTH_KEYCLOAK_TITLE
 .. envvar:: WEBLATE_SOCIAL_AUTH_KEYCLOAK_IMAGE
 
-    Enables Keycloak authentication, see
-    `documentation <https://github.com/python-social-auth/social-core/blob/master/social_core/backends/keycloak.py>`_.
+    Enables Keycloak authentication, see :doc:`psa:backends/keycloak`.
 
 Linux vendors
 ~~~~~~~~~~~~~
@@ -1425,8 +1443,13 @@ Other authentication settings
 .. envvar:: WEBLATE_MIN_PASSWORD_SCORE
 
    Minimal password score as evaluated by the `zxcvbn
-   <https://github.com/dropbox/zxcvbn>`_ password strength estimator.
+   <https://github.com/dwolfhub/zxcvbn-python>`_ password strength estimator.
    Defaults to 3, set to 0 to disable strength checking.
+
+   .. seealso::
+
+      :ref:`password-authentication`,
+      :setting:`PASSWORD_MINIMAL_STRENGTH`
 
 
 PostgreSQL database setup
@@ -1464,7 +1487,7 @@ both Weblate and PostgreSQL containers.
 .. envvar:: POSTGRES_SSL_MODE
 
    Configure how PostgreSQL handles SSL in connection to the server, for possible choices see
-   `SSL Mode Descriptions <https://www.postgresql.org/docs/11/libpq-ssl.html#LIBPQ-SSL-SSLMODE-STATEMENTS>`_
+   `SSL Mode Descriptions <https://www.postgresql.org/docs/11/libpq-ssl.html#LIBPQ-SSL-SSLMODE-STATEMENTS>`_.
 
 .. envvar:: POSTGRES_ALTER_ROLE
 
@@ -1943,11 +1966,11 @@ Container settings
 Docker container volumes
 ------------------------
 
-There are two volumes (``data`` and ``cache``) exported by the Weblate container. The
+There are two volumes (:file:`data` and :file:`cache`) exported by the Weblate container. The
 other service containers (PostgreSQL or Redis) have their data volumes as well,
 but those are not covered by this document.
 
-The ``data`` volume is mounted as :file:`/app/data` and is used to store
+The :file:`data` volume is mounted as :file:`/app/data` and is used to store
 Weblate persistent data such as cloned repositories or to customize Weblate
 installation. :setting:`DATA_DIR` describes in more detail what is stored here.
 
@@ -1956,7 +1979,7 @@ configuration, but usually it is stored in
 :file:`/var/lib/docker/volumes/weblate-docker_weblate-data/_data/` (the path
 consist of name of your docker-compose directory, container, and volume names).
 
-The ``cache`` volume is mounted as :file:`/app/cache` and is used to store static
+The :file:`cache` volume is mounted as :file:`/app/cache` and is used to store static
 files and :setting:`CACHE_DIR`. Its content is recreated on container startup
 and the volume can be mounted using ephemeral filesystem such as `tmpfs`.
 
@@ -1964,8 +1987,8 @@ When creating the volumes manually, the directories should be owned by UID 1000
 as that is user used inside the container.
 
 Weblate container can also be executed with a read-only root file system. In
-this case, two additional ``tmpfs`` volumes should be mounted: ``/tmp`` and
-``/run``.
+this case, two additional ``tmpfs`` volumes should be mounted: :file:`/tmp` and
+:file:`/run`.
 
 .. seealso::
 

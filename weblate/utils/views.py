@@ -35,7 +35,12 @@ from weblate.lang.models import Language
 from weblate.trans.models import Category, Component, Project, Translation, Unit
 from weblate.utils import messages
 from weblate.utils.errors import report_error
-from weblate.utils.stats import BaseStats, CategoryLanguage, ProjectLanguage
+from weblate.utils.stats import (
+    BaseStats,
+    CategoryLanguage,
+    ProjectLanguage,
+    prefetch_stats,
+)
 from weblate.vcs.git import LocalRepository
 
 if TYPE_CHECKING:
@@ -112,7 +117,7 @@ def get_percent_color(percent) -> str:
     return "#f6664c"
 
 
-def get_page_limit(request: AuthenticatedHttpRequest, default):
+def get_page_limit(request: AuthenticatedHttpRequest, default: int) -> tuple[int, int]:
     """Return page and limit as integers."""
     try:
         limit = int(request.GET.get("limit", default))
@@ -142,18 +147,36 @@ def sort_objects(object_list, sort_by: str):
     return sorted(object_list, key=key, reverse=reverse), sort_by
 
 
-def get_paginator(request: AuthenticatedHttpRequest, object_list, page_limit=None):
+def get_paginator(
+    request: AuthenticatedHttpRequest,
+    object_list,
+    *,
+    page_limit: int | None = None,
+    stats: bool = False,
+):
     """Return paginator and current page."""
     page, limit = get_page_limit(request, page_limit or settings.DEFAULT_PAGE_LIMIT)
     sort_by = request.GET.get("sort_by")
+    stats_fetched = False
     if sort_by:
+        # All but ordering by name needs stats
+        if sort_by != "name" and stats:
+            object_list = prefetch_stats(object_list)
+            stats_fetched = True
+
         object_list, sort_by = sort_objects(object_list, sort_by)
     paginator = Paginator(object_list, limit)
     paginator.sort_by = sort_by
     try:
-        return paginator.page(page)
+        result = paginator.page(page)
     except EmptyPage:
-        return paginator.page(paginator.num_pages)
+        result = paginator.page(paginator.num_pages)
+
+    # Prefetch stats if asked for and were not yet fetched
+    if stats and not stats_fetched:
+        return prefetch_stats(result)
+
+    return result
 
 
 class PathViewMixin(View):
@@ -476,7 +499,7 @@ def zip_download(
     root: str,
     filenames: list[str],
     name: str = "translations",
-    extra: dict[str, bytes] | None = None,
+    extra: dict[str, bytes | str] | None = None,
 ):
     response = HttpResponse(content_type="application/zip")
     with ZipFile(response, "w", strict_timestamps=False) as zipfile:
@@ -580,6 +603,10 @@ def download_translation_file(
     response["Last-Modified"] = http_date(int(last_modified))
 
     return response
+
+
+def get_form_data(data: dict[str, str | int | None]) -> dict[str, str | int]:
+    return {key: "" if value is None else value for key, value in data.items()}
 
 
 def get_form_errors(form):
